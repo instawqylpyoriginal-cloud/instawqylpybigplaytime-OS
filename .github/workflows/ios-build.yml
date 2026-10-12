@@ -16,43 +16,25 @@ jobs:
         with:
           lfs: true
 
-      - name: Build Valid iOS IPA Payload Structure
-        run: |
-          echo "SideStore uyumlu IPA yapısı oluşturuluyor..."
-          mkdir -p Payload/MyProject8mobile.app
-          
-          # Cook edilmiş verileri Payload/.app klasörüne taşıyoruz
-          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ 2>/dev/null || true
-          cp -R Engine Payload/MyProject8mobile.app/ 2>/dev/null || true
-          
-          # Eğer Info.plist yoksa SideStore hata vermesin diye temel bir Info.plist oluşturuyoruz
-          if [ ! -f "Payload/MyProject8mobile.app/Info.plist" ]; then
-            cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>MyProject8mobile</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.instawqyl.bigplaytime</string>
-              <key>CFBundleName</key>
-              <string>BigPlaytime</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>LSRequiresIPhoneOS</key>
-              <true/>
-          </dict>
-          </plist>
-          EOF
-          fi
+      - name: Setup Unreal Engine Environment
+        uses: UnrealEngine-Actions/setup-ue@master
+        with:
+          engine-version: '5.3.2'
 
-          mkdir -p StagedBuilds/IOS
-          zip -r StagedBuilds/IOS/MyProject8mobile.ipa Payload
+      - name: Run Unreal Engine BuildCookRun for iOS
+        run: |
+          echo "Unreal Engine ile IPA paketlemesi başlatılıyor..."
+          # Mac runner içinde UE derleme betiğini çalıştırıyoruz
+          /Users/runner/Library/Application\ Support/Epic/UnrealEngine/5.3/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
+            -project="$GITHUB_WORKSPACE/MyProject8mobile.uproject" \
+            -noP4 \
+            -platform=IOS \
+            -clientconfig=Shipping \
+            -skipcook \
+            -stage \
+            -pak \
+            -archive \
+            -archivedirectory="$GITHUB_WORKSPACE/StagedBuilds"
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
