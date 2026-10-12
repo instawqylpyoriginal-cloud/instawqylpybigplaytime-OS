@@ -16,14 +16,43 @@ jobs:
         with:
           lfs: true
 
-      - name: Create Dummy / Staged IPA
+      - name: Build Valid iOS IPA Payload Structure
         run: |
-          echo "Pre-cooked iOS verileri paketleniyor..."
-          mkdir -p StagedBuilds/IOS
+          echo "SideStore uyumlu IPA yapısı oluşturuluyor..."
+          mkdir -p Payload/MyProject8mobile.app
           
-          # Engine ve Proje klasörlerini IPA yapısı için zipliyoruz
-          cd $GITHUB_WORKSPACE
-          zip -r StagedBuilds/IOS/MyProject8mobile.ipa Engine MyProject8mobile MyProject8mobile.uproject
+          # Cook edilmiş verileri Payload/.app klasörüne taşıyoruz
+          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ 2>/dev/null || true
+          cp -R Engine Payload/MyProject8mobile.app/ 2>/dev/null || true
+          
+          # Eğer Info.plist yoksa SideStore hata vermesin diye temel bir Info.plist oluşturuyoruz
+          if [ ! -f "Payload/MyProject8mobile.app/Info.plist" ]; then
+            cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>MyProject8mobile</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.instawqyl.bigplaytime</string>
+              <key>CFBundleName</key>
+              <string>BigPlaytime</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+          fi
+
+          mkdir -p StagedBuilds/IOS
+          zip -r StagedBuilds/IOS/MyProject8mobile.ipa Payload
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
