@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios:
-    name: Cook, Package & Generate Real IPA (UE 5.3.2)
+    name: Install UE 5.3.2 & Package iOS IPA
     runs-on: macos-latest
 
     steps:
@@ -16,28 +16,27 @@ jobs:
         with:
           lfs: true
 
-      - name: Set up Environment & Disk Space
-        run: |
-          echo "Bulut Mac disk alanı kontrol ediliyor..."
-          df -h
+      - name: Cache & Setup Unreal Engine 5.3.2
+        uses: UnrealEngine-Actions/setup-ue@v1
+        with:
+          engine-version: '5.3.2'
 
-      # Not: Unreal Engine 5.3.2 kurulumu ve AutomationTool (RunUAT) tetikleyicisi
-      # Blueprint projelerini iOS için (Client/Shipping) doğrudan paketler.
-      - name: Run Unreal Engine iOS AutomationTool
+      - name: Run AutomationTool (RunUAT) - Cook & Package iOS
         run: |
-          echo "Unreal Engine 5.3.2 Bulut Kurulumu ve Cook İşlemi Başlatılıyor..."
+          echo "Unreal Engine 5.3.2 ile iOS paketlemesi başlatılıyor..."
           
-          # UE5 Mac BuildCookRun Komut Şablonu:
-          # /Users/runner/Shared/Epic\ Games/UE_5.3/Engine/Build/BatchFiles/RunUAT BuildCookRun \
-          # -project="$PWD/MyProject8mobile.uproject" \
-          # -noP4 -platform=IOS -clientconfig=Shipping -serverconfig=Shipping \
-          # -cook -allmaps -build -stage -pak -archive -archivedirectory="$PWD/StagedBuilds"
-          
-          echo "Motor kuruluyor ve paketleme tetiklendi..."
-          
-          # Geçici simülasyon yerine gerçek motor süreçleri buraya bağlanacak
-          mkdir -p StagedBuilds/iOS
-          touch StagedBuilds/iOS/MyProject8mobile.ipa
+          # Buluta kurulan Unreal Engine ile projeyi iOS için paketleme komutu
+          $UE_ROOT/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
+            -project="$GITHUB_WORKSPACE/MyProject8mobile.uproject" \
+            -noP4 \
+            -platform=IOS \
+            -clientconfig=Shipping \
+            -cook \
+            -allmaps \
+            -stage \
+            -pak \
+            -archive \
+            -archivedirectory="$GITHUB_WORKSPACE/StagedBuilds"
 
       - name: Upload Real iOS IPA Artifact
         uses: actions/upload-artifact@v4
