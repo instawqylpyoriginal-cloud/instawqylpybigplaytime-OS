@@ -1,4 +1,4 @@
-name: Build Real UE 5.3.2 iOS IPA
+name: Package Pre-cooked iOS IPA
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios:
-    name: Install UE 5.3.2 & Package iOS IPA
+    name: Package iOS IPA from Pre-cooked Build
     runs-on: macos-latest
 
     steps:
@@ -16,30 +16,27 @@ jobs:
         with:
           lfs: true
 
-      - name: Cache & Setup Unreal Engine 5.3.2
+      - name: Setup Unreal Engine Environment
         uses: UnrealEngine-Actions/setup-ue@v1
         with:
           engine-version: '5.3.2'
 
-      - name: Run AutomationTool (RunUAT) - Cook & Package iOS
+      - name: Package Pre-cooked Project into IPA
         run: |
-          echo "Unreal Engine 5.3.2 ile iOS paketlemesi başlatılıyor..."
-          
-          # Buluta kurulan Unreal Engine ile projeyi iOS için paketleme komutu
+          echo "Önceden Cook edilmiş iOS paketi IPA haline getiriliyor..."
           $UE_ROOT/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
             -project="$GITHUB_WORKSPACE/MyProject8mobile.uproject" \
             -noP4 \
             -platform=IOS \
             -clientconfig=Shipping \
-            -cook \
-            -allmaps \
+            -skipcook \
             -stage \
             -pak \
             -archive \
             -archivedirectory="$GITHUB_WORKSPACE/StagedBuilds"
 
-      - name: Upload Real iOS IPA Artifact
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Real-iOS-IPA-UE5.3.2
-          path: StagedBuilds/iOS/*.ipa
+          name: instawqyl-bigplaytime-iOS-IPA
+          path: StagedBuilds/IOS/*.ipa
