@@ -1,0 +1,21 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build for iOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Notice
+        run: |
+          echo "Proje başarıyla yüklendi ve Git LFS aktif!"
+          ls -la
