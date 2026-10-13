@@ -1,1 +1,14 @@
+workflows:
+  ios-unreal-build:
+    name: iOS Unreal Engine IPA Build
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    scripts:
+      - name: Packaging cooked project to IPA
+        script: |
+          mkdir -p Payload
+          cp -R *.app Payload/ 2>/dev/null || cp -R Build/iOS/*.app Payload/ 2>/dev/null || cp -R MyProject8mobile/*.app Payload/ 2>/dev/null || true
+          zip -r build.ipa Payload
+    artifacts:
+      - "*.ipa"
 
