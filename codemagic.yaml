@@ -4,15 +4,22 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     scripts:
-      - name: Packaging cooked project to IPA
+      - name: Build and Package Unreal Project
         script: |
+          # Unreal Engine'in Mac üzerinde projenizi iOS için cook/package etmesini sağlayan komut
+          # UBT (Unreal Build Tool) veya AutomationTool kullanarak paketleme tetiklenir
+          if [ -d "Engine" ]; then
+            echo "Engine bulundu, komut satırı ile paketleme başlatılıyor..."
+            ./Engine/Build/BatchFiles/RunUAT.sh BuildCookRun -project="$PWD/MyProject8mobile/MyProject8mobile.uproject" -noP4 -platform=IOS -clientconfig=Development -cook -build -stage -package
+          else
+            echo "Engine klasörü dışarıda, alternatif dizin kontrol ediliyor..."
+            # Eğer Engine harici bir yoldaysa veya farklı bir yapıdaysa buraya eklenir
+          fi
+          
           mkdir -p Payload
-          
-          # Repodaki tüm .app klasörlerini otomatik bul ve Payload içine kopyala
           find . -name "*.app" -type d -exec cp -R {} Payload/ \;
-          
-          # Eğer Payload dolduysa zip'le
           zip -r build.ipa Payload
     artifacts:
       - "*.ipa"
+
 
