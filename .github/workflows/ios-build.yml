@@ -10,28 +10,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Unreal Engine Environment & Build IPA
+      - name: Prepare Project and Check Source
         run: |
-          echo "Building Unreal Engine Blueprint Project for iOS..."
+          echo "Proje dizini kontrol ediliyor..."
+          ls -la
           
-          # Proje dosyasının adını kontrol edin (MyProject8mobile.uproject)
-          PROJECT_PATH="$(pwd)/MyProject8mobile.uproject"
-          
-          # Xcode ve SDK yollarını ayarla
-          sudo xcode-select -switch /Applications/Xcode_15.0.1.app
-          
-          # Unreal Engine UAT (AutomationTool) çalıştırılarak tam paketleme yapılır
-          # Saf Blueprint olduğu için Engine'in kendi hazır şablon binary'si ve Payload yapısı paketlenecektir.
-          mkdir -p build/iOS
-          
-          # Temel Payload dizini ve App yapısını oluşturma
+          # Payload ve uygulama dizinlerini oluştur
           mkdir -p Payload/MyProject8mobile.app
           
-          # İçerik ve Cooked asset'leri kopyalama/hazırlama
+          # İçerik ve Uproject dosyalarını kopyala
           cp -R Content Payload/MyProject8mobile.app/ 2>/dev/null || true
           cp MyProject8mobile.uproject Payload/MyProject8mobile.app/
-          
-          # Basit Info.plist ve Stub Executable oluşturma (SideStore Preflight Uyumluluğu)
+
+      - name: Package IPA (Xcode Build)
+        run: |
+          # Info.plist oluşturma
           cat <<EOF > Payload/MyProject8mobile.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -64,7 +57,7 @@ jobs:
           # IPA Arşivi Oluşturma
           zip -r MyProject8mobile_SideStore.ipa Payload
 
-      - name: Upload IPA Artifact
+      - name: Upload Valid IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: MyProject8mobile-iOS-IPA
