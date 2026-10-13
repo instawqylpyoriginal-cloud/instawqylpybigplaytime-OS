@@ -4,20 +4,24 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     scripts:
-      - name: Find and Package Existing iOS App Bundle
+      - name: Build and Package for iOS on Mac
         script: |
+          # Mac ortamında RunUAT.sh scriptini doğru yoldan çalıştırarak iOS paketlemesi başlatıyoruz
+          chmod +x ./Engine/Build/BatchFiles/RunUAT.sh
+          
+          ./Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
+            -project="$PWD/MyProject8mobile/MyProject8mobile.uproject" \
+            -noP4 \
+            -platform=IOS \
+            -clientconfig=Development \
+            -cook \
+            -build \
+            -stage \
+            -package
+            
+          # Çıkan .app dosyasını bulup Payload'a atalım ve IPA yapalım
           mkdir -p Payload
-          
-          # Reponun tamamında .app veya .ipa uzantılı her şeyi ara ve bulduklarını Payload'a kopyala
           find . -name "*.app" -type d -exec cp -R {} Payload/ \;
-          
-          # Eğer hazır bir .ipa bulursa onu açıp Payload yapısına dahil et
-          find . -name "*.ipa" -exec unzip -o {} -d . \; || true
-          
-          # Eğer hâlâ Payload boşsa hata vermesin diye boş dosya oluşturmasın, kontrol edelim
-          ls -la Payload
-          
           zip -r build.ipa Payload
     artifacts:
       - "*.ipa"
-
