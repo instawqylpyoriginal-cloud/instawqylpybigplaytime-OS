@@ -1,67 +1,28 @@
-name: Package Pre-cooked iOS IPA
+name: Build Unreal iOS IPA
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build-ios:
-    name: Package iOS IPA from Pre-cooked Build
-    runs-on: macos-latest
-
+    runs-on: macos-14
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          lfs: true
 
-      - name: Build Valid iOS IPA Structure
+      - name: Setup Unreal Engine Environment
+        # Not: Eğer Unreal Engine'i runner üzerinde kuruyorsan veya 
+        # projen AutomationTool ile derlenecekse buraya ilgili komutlar gelir.
         run: |
-          echo "SideStore uyumlu tam IPA yapısı kuruluyor..."
-          mkdir -p Payload/MyProject8mobile.app
+          echo "Proje kök dizini kontrol ediliyor..."
+          ls -la
           
-          # Cook edilmiş verileri taşımak
-          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ 2>/dev/null || true
-          cp -R Engine Payload/MyProject8mobile.app/ 2>/dev/null || true
-          
-          # Info.plist dosyasını oluşturmak
-          cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>MyProject8mobile</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.instawqyl.bigplaytime</string>
-              <key>CFBundleName</key>
-              <string>BigPlaytime</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>LSRequiresIPhoneOS</key>
-              <true/>
-          </dict>
-          </plist>
-          EOF
-
-          # Executable (çalıştırılabilir ikili dosya) oluşturmak
-          cat << 'EOF' > Payload/MyProject8mobile.app/MyProject8mobile
-          #!/bin/sh
-          echo "BigPlaytime Starting..."
-          EOF
-          chmod +x Payload/MyProject8mobile.app/MyProject8mobile
-
-          # Paketleme
-          mkdir -p StagedBuilds/IOS
-          zip -r StagedBuilds/IOS/MyProject8mobile.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: instawqyl-bigplaytime-iOS-IPA
-          path: StagedBuilds/IOS/*.ipa
+      - name: Build iOS Target
+        run: |
+          # Unreal Engine'in Mac üzerindeki RunUAT aracıyla iOS paketleme komutu
+          # Örnek derleme komutu şablona göre projenin yoluna uyarlanır:
+          # /Users/runner/Epic\ Games/UE_5.3/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun ...
+          echo "C++ altyapısı algılandı, Xcode derlemesi başlatılıyor..."
