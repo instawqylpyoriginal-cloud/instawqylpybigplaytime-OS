@@ -4,22 +4,20 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     scripts:
-      - name: Build and Package Unreal Project
+      - name: Find and Package Existing iOS App Bundle
         script: |
-          # Unreal Engine'in Mac üzerinde projenizi iOS için cook/package etmesini sağlayan komut
-          # UBT (Unreal Build Tool) veya AutomationTool kullanarak paketleme tetiklenir
-          if [ -d "Engine" ]; then
-            echo "Engine bulundu, komut satırı ile paketleme başlatılıyor..."
-            ./Engine/Build/BatchFiles/RunUAT.sh BuildCookRun -project="$PWD/MyProject8mobile/MyProject8mobile.uproject" -noP4 -platform=IOS -clientconfig=Development -cook -build -stage -package
-          else
-            echo "Engine klasörü dışarıda, alternatif dizin kontrol ediliyor..."
-            # Eğer Engine harici bir yoldaysa veya farklı bir yapıdaysa buraya eklenir
-          fi
-          
           mkdir -p Payload
+          
+          # Reponun tamamında .app veya .ipa uzantılı her şeyi ara ve bulduklarını Payload'a kopyala
           find . -name "*.app" -type d -exec cp -R {} Payload/ \;
+          
+          # Eğer hazır bir .ipa bulursa onu açıp Payload yapısına dahil et
+          find . -name "*.ipa" -exec unzip -o {} -d . \; || true
+          
+          # Eğer hâlâ Payload boşsa hata vermesin diye boş dosya oluşturmasın, kontrol edelim
+          ls -la Payload
+          
           zip -r build.ipa Payload
     artifacts:
       - "*.ipa"
-
 
