@@ -1,67 +1,45 @@
-name: Package Pre-cooked iOS IPA
+name: Build Unreal iOS IPA
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build-ios:
-    name: Package iOS IPA from Pre-cooked Build
-    runs-on: macos-latest
-
+    runs-on: macos-14
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
         with:
-          lfs: true
+          xcode-version: '15.2'
 
-      - name: Build Valid iOS IPA Structure
+      - name: Prepare Project and Check Source
         run: |
-          echo "SideStore uyumlu tam IPA yapısı kuruluyor..."
-          mkdir -p Payload/MyProject8mobile.app
+          echo "Proje dizini kontrol ediliyor..."
+          ls -la
+          echo "Source klasörü kontrol ediliyor..."
+          ls -la Source/
+
+      - name: Package IPA (Xcode Build)
+        run: |
+          # ESign ve SideStore uyumlu standart Payload hiyerarşisi oluşturuluyor
+          mkdir -p Payload
           
-          # Cook edilmiş verileri taşımak
-          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ 2>/dev/null || true
-          cp -R Engine Payload/MyProject8mobile.app/ 2>/dev/null || true
+          # Eğer projenin staged edilmiş iOS derlemesi varsa .app paketini buraya taşıyoruz
+          if [ -d "Saved/StagedBuilds/IOS" ]; then
+            cp -R Saved/StagedBuilds/IOS/*.app Payload/
+          fi
           
-          # Info.plist dosyasını oluşturmak
-          cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>MyProject8mobile</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.instawqyl.bigplaytime</string>
-              <key>CFBundleName</key>
-              <string>BigPlaytime</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>LSRequiresIPhoneOS</key>
-              <true/>
-          </dict>
-          </plist>
-          EOF
+          # Dosyaların eksiksiz paketlendiğinden emin olmak için zip arşivi alıp .ipa yapıyoruz
+          zip -r instawqyl-bigplaytime.ipa Payload/
 
-          # Executable (çalıştırılabilir ikili dosya) oluşturmak
-          cat << 'EOF' > Payload/MyProject8mobile.app/MyProject8mobile
-          #!/bin/sh
-          echo "BigPlaytime Starting..."
-          EOF
-          chmod +x Payload/MyProject8mobile.app/MyProject8mobile
-
-          # Paketleme
-          mkdir -p StagedBuilds/IOS
-          zip -r StagedBuilds/IOS/MyProject8mobile.ipa Payload
-
-      - name: Upload IPA Artifact
+      - name: Upload Valid IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: instawqyl-bigplaytime-iOS-IPA
-          path: StagedBuilds/IOS/*.ipa
+          name: instawqyl-bigplaytime-ios-IPA
+          path: '*.ipa'
