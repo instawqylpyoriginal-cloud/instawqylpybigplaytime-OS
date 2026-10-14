@@ -6,15 +6,15 @@ workflows:
     scripts:
       - name: Compile and Package IPA
         script: |
-          echo "-> Standart App.app klasör yapısı oluşturuluyor..."
+          echo "-> Orijinal proje adresiyle klasör yapısı oluşturuluyor..."
           rm -rf Payload
-          mkdir -p Payload/App.app
+          mkdir -p Payload/MyProject8mobile.app
           
           echo "-> Cook dosyaları kopyalanıyor..."
-          cp -R MyProject8mobile/* Payload/App.app/ || true
+          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ || true
           
           echo "-> Info.plist yazılıyor..."
-          cat << 'EOF' > Payload/App.app/Info.plist
+          cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -82,14 +82,14 @@ workflows:
           }
           EOF
 
-          echo "-> Doğru yola (App.app/MyProject8mobile) derleniyor..."
+          echo "-> Doğru konuma (MyProject8mobile.app/MyProject8mobile) derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bridge.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
-          chmod +x Payload/App.app/MyProject8mobile
+          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bridge.cpp -o Payload/MyProject8mobile.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
+          chmod +x Payload/MyProject8mobile.app/MyProject8mobile
 
           echo "-> IPA paketleniyor..."
           zip -r build.ipa Payload
-          echo "-> Tamamdır!"
+          echo "-> İşlem tamam!"
           
     artifacts:
       - "*.ipa"
