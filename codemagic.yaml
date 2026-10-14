@@ -2,21 +2,19 @@ workflows:
   ios-unreal-build:
     name: iOS Unreal Engine IPA Build
     max_build_duration: 120
-    instance_type: mac_mini_m2
+    instance_type: mac_mini_m1
     scripts:
-      - name: Compile and Package IPA for SideStore
+      - name: Generate Full Unreal Bootstrap and Package to IPA
         script: |
-          echo "-> Temizlik yapılıyor..."
+          echo "-> SideStore'un sevdiği orijinal MyProject8mobile.app klasör yapısı oluşturuluyor..."
           rm -rf Payload build.ipa
+          mkdir -p Payload/MyProject8mobile.app
           
-          echo "-> SideStore'un kesin olarak aradığı App.app klasör yapısı oluşturuluyor..."
-          mkdir -p Payload/App.app
+          echo "-> Cook edilmiş dosyalar .app içine kopyalanıyor..."
+          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ || true
           
-          echo "-> Cook dosyaları kopyalanıyor..."
-          cp -R MyProject8mobile/* Payload/App.app/ || true
-          
-          echo "-> Info.plist yazılıyor..."
-          cat << 'EOF' > Payload/App.app/Info.plist
+          echo "-> iOS için detaylı Info.plist oluşturuluyor..."
+          cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -52,7 +50,7 @@ workflows:
           </plist>
           EOF
 
-          echo "-> Watchdog ve çökme önleyici UIKit bootstrap yazılıyor..."
+          echo "-> Watchdog çökmesini önleyen UIKit tabanlı bootstrap kodu yazılıyor..."
           cat << 'EOF' > unreal_bootstrap.cpp
           #import <UIKit/UIKit.h>
           #include <pthread.h>
@@ -101,14 +99,14 @@ workflows:
           }
           EOF
           
-          echo "-> Doğrudan App.app/MyProject8mobile yoluna derleniyor..."
+          echo "-> Doğru konuma (MyProject8mobile.app/MyProject8mobile) derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
-          chmod +x Payload/App.app/MyProject8mobile
+          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/MyProject8mobile.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
+          chmod +x Payload/MyProject8mobile.app/MyProject8mobile
 
           echo "-> IPA paketi oluşturuluyor..."
           zip -r build.ipa Payload
-          echo "-> İşlem tamamlandı!"
+          echo "-> İşlem başarıyla tamamlandı!"
           
     artifacts:
       - "*.ipa"
