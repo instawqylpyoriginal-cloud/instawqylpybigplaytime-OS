@@ -1,87 +1,78 @@
 workflows:
   ios-unreal-build:
-    name: iOS Unreal Engine IPA Build
+    name: UE5 iOS IPA Build
     max_build_duration: 120
     instance_type: mac_mini_m1
+    environment:
+      xcode: latest
     scripts:
-      - name: Package Complete Unreal iOS App
+      - name: Build Unreal Project
         script: |
-          echo "-> Eski çıktılar ve geçici dosyalar temizleniyor..."
-          rm -rf Payload build.ipa unreal_bootstrap.cpp
+          echo "-> Unreal Engine projesi derleniyor..."
+          # Eğer projenin özel bir build komutu varsa buraya gelebilir, 
+          # yoksa Codemagic'in varsayılan Unreal derleme adımları burada koşar.
           
-          echo "-> Payload/UnrealGame.app dizin yapısı oluşturuluyor..."
-          mkdir -p Payload/UnrealGame.app
+      - name: Fix App Structure and Rename to UnrealGame
+        script: |
+          echo "=== Orijinal .app klasörü UnrealGame formatına uyarlanıyor ==="
+          cd $CM_BUILD_DIR
           
-          echo "-> Reponun kök dizinindeki tüm oyun ve motor dosyaları UnrealGame.app içine kopyalanıyor..."
-          cp -R * Payload/UnrealGame.app/ 2>/dev/null || true
+          # 1. DerivedData veya build çıktılarındaki herhangi bir App.app klasörünü bul
+          APP_DIR=$(find . -type d -name "App.app" | head -n 1)
           
-          echo "-> C++ Unreal Bootstrap kopyası hazırlanıyor..."
-          cat << 'EOF' > unreal_bootstrap.cpp
-          #import <UIKit/UIKit.h>
-          #include <pthread.h>
-          #include <unistd.h>
-          #include <stdio.h>
-
-          void* engine_thread(void* arg) {
-              printf("Unreal Engine worker thread running...\n");
-              while(1) { sleep(1); }
-              return NULL;
-          }
-
-          @interface AppDelegate : UIResponder <UIApplicationDelegate>
-          @property (strong, nonatomic) UIWindow *window;
-          @end
-
-          @implementation AppDelegate
-          - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-              self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-              UIViewController *vc = [[UIViewController alloc] init];
-              vc.view.backgroundColor = [UIColor blackColor];
+          if [ -z "$APP_DIR" ]; then
+              echo "Uyarı: App.app bulunamadı, doğrudan Payload kontrol ediliyor..."
+              APP_DIR="Payload/App.app"
+          fi
+          
+          if [ -d "$APP_DIR" ]; then
+              PARENT_DIR=$(dirname "$APP_DIR")
               
-              UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 50)];
-              label.center = vc.view.center;
-              label.text = @"MyProject8mobile";
-              label.textColor = [UIColor whiteColor];
-              label.textAlignment = NSTextAlignmentCenter;
-              [vc.view addSubview:label];
+              echo "Bulunan klasör: $APP_DIR"
               
-              self.window.rootViewController = vc;
-              [self.window makeKeyAndVisible];
+              # 2. Klasör adını UnrealGame.app yap
+              mv "$APP_DIR" "$PARENT_DIR/UnrealGame.app"
+              NEW_APP_PATH="$PARENT_DIR/UnrealGame.app"
               
-              pthread_t t;
-              pthread_create(&t, NULL, engine_thread, NULL);
+              # 3. İçindeki çalıştırılabilir ana binary dosyasının adını UnrealGame yap (Eğer adı App ise)
+              if [ -f "$NEW_APP_PATH/App" ]; then
+                  mv "$NEW_APP_PATH/App" "$NEW_APP_PATH/UnrealGame"
+                  echo "Binary adı UnrealGame olarak değiştirildi."
+              elif [ -f "$NEW_APP_PATH/MyProject" ]; then
+                  mv "$NEW_APP_PATH/MyProject" "$NEW_APP_PATH/UnrealGame"
+                  echo "Binary adı UnrealGame olarak değiştirildi."
+              fi
               
-              return YES;
-          }
-          @end
-
-          int main(int argc, char *argv[]) {
-              @autoreleasepool {
-                  return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
-              }
-          }
-          EOF
-          
-          echo "-> Apple Clang ile 'UnrealGame' executable binary derleniyor..."
-          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/UnrealGame.app/UnrealGame -framework Foundation -framework UIKit -framework CoreGraphics
-          
-          echo "-> Binary dosyaya çalıştırma yetkisi veriliyor..."
-          chmod +x Payload/UnrealGame.app/UnrealGame
-
-          echo "-> Info.plist içi UnrealGame olarak zorla güncelleniyor..."
-          PLIST_PATH="Payload/UnrealGame.app/Info.plist"
-          if [ -f "$PLIST_PATH" ]; then
-              plutil -replace CFBundleExecutable -string "UnrealGame" "$PLIST_PATH"
-              plutil -replace CFBundleName -string "UnrealGame" "$PLIST_PATH"
+              # 4. Info.plist içindeki CFBundleExecutable ve CFBundleName değerlerini UnrealGame yap
+              PLIST_PATH="$NEW_APP_PATH/Info.plist"
+              if [ -f "$PLIST_PATH" ]; then
+                  plutil -replace CFBundleExecutable -string "UnrealGame" "$PLIST_PATH"
+                  plutil -replace CFBundleName -string "UnrealGame" "$PLIST_PATH"
+                  echo "Info.plist başarıyla UnrealGame olarak güncellendi."
+              fi
+          else
+              echo "Hata: Hiçbir .app klasörü bulunamadı!"
+              exit 1
           fi
 
-          echo "-> Paket içeriği kontrol ediliyor..."
-          ls -la Payload/UnrealGame.app/
-
-          echo "-> IPA paketi sıkıştırılıyor..."
-          zip -r build.ipa Payload
-          echo "-> PAKETLEME BAŞARIYLA TAMAMLANDI!"
+      - name: Package Final IPA
+        script: |
+          echo "=== Hatasız IPA Paketlemesi Yapılıyor ==="
+          cd $CM_BUILD_DIR
           
+          # Payload klasörünün içinde sadece UnrealGame.app olduğundan emin ol
+          mkdir -p final_payload
+          
+          # UnrealGame.app klasörünü son payload içine taşı
+          FOUND_APP=$(find . -type d -name "UnrealGame.app" | head -n 1)
+          cp -R "$FOUND_APP" final_payload/
+          
+          cd final_payload
+          zip -r ../UnrealGame_Final.ipa Payload 2>/dev/null || zip -r ../UnrealGame_Final.ipa .
+          cd ..
+          
+          echo "IPA başarıyla paketlendi: UnrealGame_Final.ipa"
+
     artifacts:
       - "*.ipa"
+      - "UnrealGame_Final.ipa"
