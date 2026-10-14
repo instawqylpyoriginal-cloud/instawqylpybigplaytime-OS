@@ -69,6 +69,13 @@ workflows:
           echo "-> Binary dosyaya çalıştırma yetkisi veriliyor..."
           chmod +x Payload/UnrealGame.app/UnrealGame
 
+          echo "-> Info.plist içi UnrealGame olarak zorla güncelleniyor..."
+          PLIST_PATH="Payload/UnrealGame.app/Info.plist"
+          if [ -f "$PLIST_PATH" ]; then
+              plutil -replace CFBundleExecutable -string "UnrealGame" "$PLIST_PATH"
+              plutil -replace CFBundleName -string "UnrealGame" "$PLIST_PATH"
+          fi
+
           echo "-> Paket içeriği kontrol ediliyor..."
           ls -la Payload/UnrealGame.app/
 
