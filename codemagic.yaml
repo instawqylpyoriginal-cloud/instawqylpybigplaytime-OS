@@ -2,19 +2,19 @@ workflows:
   ios-unreal-build:
     name: iOS Unreal Engine IPA Build
     max_build_duration: 120
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m2
     scripts:
-      - name: Compile and Package IPA
+      - name: Compile and Package IPA for SideStore
         script: |
-          echo "-> Yükleme aracının beklediği App.app klasör yapısı oluşturuluyor..."
+          echo "-> Mac mini M2 üzerinde SideStore uyumlu paketleme başlatılıyor..."
           rm -rf Payload
-          mkdir -p Payload/App.app
+          mkdir -p Payload/MyProject8mobile.app
           
           echo "-> Cook dosyaları kopyalanıyor..."
-          cp -R MyProject8mobile/* Payload/App.app/ || true
+          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ || true
           
-          echo "-> Info.plist yazılıyor..."
-          cat << 'EOF' > Payload/App.app/Info.plist
+          echo "-> SideStore uyumlu Info.plist yazılıyor..."
+          cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -82,14 +82,14 @@ workflows:
           }
           EOF
 
-          echo "-> Hatanın istediği tam konuma (App.app/MyProject8mobile) derleniyor..."
+          echo "-> M2 mimarisinde arm64 derlemesi yapılıyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bridge.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
-          chmod +x Payload/App.app/MyProject8mobile
+          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bridge.cpp -o Payload/MyProject8mobile.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
+          chmod +x Payload/MyProject8mobile.app/MyProject8mobile
 
           echo "-> IPA paketleniyor..."
           zip -r build.ipa Payload
-          echo "-> İşlem tamam!"
+          echo "-> İşlem tamamdır!"
           
     artifacts:
       - "*.ipa"
