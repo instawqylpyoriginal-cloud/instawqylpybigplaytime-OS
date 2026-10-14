@@ -13,7 +13,6 @@ workflows:
           mkdir -p Payload/App.app
           
           echo "-> Reponun kök dizinindeki tüm oyun ve motor dosyaları App.app içine kopyalanıyor..."
-          # Repodaki Engine, MyProject8mobile, Info.plist, cookeddata ve tüm manifest dosyalarını taşıyoruz
           cp -R * Payload/App.app/ 2>/dev/null || true
           
           echo "-> C++ Unreal Bootstrap kopyası hazırlanıyor..."
@@ -63,12 +62,12 @@ workflows:
           }
           EOF
           
-          echo "-> Apple Clang ile 'MyProject8mobile' executable binary derleniyor..."
+          echo "-> Apple Clang ile 'UnrealGame' executable binary derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
+          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/UnrealGame -framework Foundation -framework UIKit -framework CoreGraphics
           
           echo "-> Binary dosyaya çalıştırma yetkisi veriliyor..."
-          chmod +x Payload/App.app/MyProject8mobile
+          chmod +x Payload/App.app/UnrealGame
 
           echo "-> Paket içeriği kontrol ediliyor..."
           ls -la Payload/App.app/
