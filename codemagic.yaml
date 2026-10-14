@@ -1,57 +1,71 @@
 workflows:
-  ios-unreal-build:
-    name: UE5 iOS IPA Build
-    max_build_duration: 120
-    instance_type: mac_mini_m1
-    environment:
-      vars:
-        XCODE_WORKSPACE: "YourProject.xcworkspace" # Kendi workspace adınla değiştir
-        XCODE_SCHEME: "YourProject"                # Kendi scheme adınla değiştir
-      xcode: latest
-      cocoapods: default
+    ios-unreal-build:
+      name: UE5 iOS IPA Build
+      max_build_duration: 120
+      instance_type: mac_mini_m1
+      environment:
+        vars:
+          XCODE_SCHEME: "UnrealGame"
+        xcode: latest
+        cocoapods: default
 
-    scripts:
-      - name: Set up building environment
-        script: |
-          echo "Build ortamı hazırlanıyor..."
-          xcodebuild -version
+      scripts:
+        - name: Set up building environment
+          script: |
+            echo "Build ortamı hazırlanıyor..."
+            xcodebuild -version
 
-      - name: Build Xcode Archive
-        script: |
-          xcodebuild build-for-testing \
-            -workspace "$XCODE_WORKSPACE" \
-            -scheme "$XCODE_SCHEME" \
-            -sdk iphoneos \
-            -configuration Release \
-            -derivedDataPath build/DerivedData
+        - name: Build Xcode Archive
+          script: |
+            echo "=== Xcode projesi otomatik bulunup derleniyor ==="
+            # Proje klasöründeki .xcodeproj veya .xcworkspace dosyasını otomatik bulur
+            PROJECT_FILE=$(find . -maxdepth 2 -name "*.xcworkspace" -o -name "*.xcodeproj" | head -n 1)
+            
+            echo "Bulunan dosya: $PROJECT_FILE"
+            
+            if [[ "$PROJECT_FILE" == *.xcworkspace ]]; then
+                xcodebuild build-for-testing \
+                  -workspace "$PROJECT_FILE" \
+                  -scheme "$XCODE_SCHEME" \
+                  -sdk iphoneos \
+                  -configuration Release \
+                  -derivedDataPath build/DerivedData
+            else
+                xcodebuild build-for-testing \
+                  -project "$PROJECT_FILE" \
+                  -scheme "$XCODE_SCHEME" \
+                  -sdk iphoneos \
+                  -configuration Release \
+                  -derivedDataPath build/DerivedData
+            fi
 
-      - name: Fix Executable & App Folder Structure
-        script: |
-          echo "=== App.app ismi UnrealGame.app olarak değiştiriliyor ==="
-          cd build/DerivedData
-          
-          # App.app klasörlerini bulup UnrealGame.app olarak yeniden adlandırır
-          find . -type d -name "App.app" | while read -r app_path; do
-              new_path="${app_path%App.app}UnrealGame.app"
-              echo "Klasör düzeltiliyor: $app_path -> $new_path"
-              mv "$app_path" "$new_path"
-          done
+        - name: Fix Executable & App Folder Structure
+          script: |
+            echo "=== App.app ismi UnrealGame.app olarak değiştiriliyor ==="
+            cd build/DerivedData
+            
+            # App.app klasörlerini bulup UnrealGame.app olarak yeniden adlandırır
+            find . -type d -name "App.app" | while read -r app_path; do
+                new_path="${app_path%App.app}UnrealGame.app"
+                echo "Klasör düzeltiliyor: $app_path -> $new_path"
+                mv "$app_path" "$new_path"
+            done
 
-      - name: Package directly into IPA
-        script: |
-          echo "=== Hatasız IPA Paketlemesi Yapılıyor ==="
-          cd $CM_BUILD_DIR
-          mkdir -p build/ipa/Payload
-          
-          # UnrealGame.app klasörünü Payload içine kopyala
-          APP_DIR=$(find build/DerivedData -type d -name "UnrealGame.app" | head -n 1)
-          cp -R "$APP_DIR" build/ipa/Payload/
-          
-          # Payload klasörünü IPA olarak zip'le
-          cd build/ipa
-          zip -r UnrealGame_Fixed.ipa Payload
-          
-          echo "IPA başarıyla paketlendi!"
+        - name: Package directly into IPA
+          script: |
+            echo "=== Hatasız IPA Paketlemesi Yapılıyor ==="
+            cd $CM_BUILD_DIR
+            mkdir -p build/ipa/Payload
+            
+            # UnrealGame.app klasörünü Payload içine kopyala
+            APP_DIR=$(find build/DerivedData -type d -name "UnrealGame.app" | head -n 1)
+            cp -R "$APP_DIR" build/ipa/Payload/
+            
+            # Payload klasörünü IPA olarak zip'le
+            cd build/ipa
+            zip -r UnrealGame_Fixed.ipa Payload
+            
+            echo "IPA başarıyla paketlendi!"
 
-    artifacts:
-      - build/ipa/*.ipa
+      artifacts:
+        - build/ipa/*.ipa
