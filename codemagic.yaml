@@ -6,15 +6,19 @@ workflows:
     scripts:
       - name: Generate Full Unreal Bootstrap and Package to IPA
         script: |
-          echo "-> SideStore'un zorunlu kıldığı App.app klasör yapısı oluşturuluyor..."
+          echo "-> Temizlik yapılıyor..."
           rm -rf Payload build.ipa
+          
+          echo "-> Çift yönlü klasör yapısı kuruluyor (SideStore uyumu için)..."
+          mkdir -p Payload/MyProject8mobile.app
           mkdir -p Payload/App.app
           
-          echo "-> Cook edilmiş dosyalar App.app içine kopyalanıyor..."
+          echo "-> Cook edilmiş dosyalar her iki klasöre de kopyalanıyor..."
+          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ || true
           cp -R MyProject8mobile/* Payload/App.app/ || true
           
-          echo "-> Info.plist yazılıyor..."
-          cat << 'EOF' > Payload/App.app/Info.plist
+          echo "-> Info.plist dosyaları yazılıyor..."
+          cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -50,7 +54,9 @@ workflows:
           </plist>
           EOF
 
-          echo "-> Watchdog çökmesini önleyen UIKit tabanlı bootstrap kodu yazılıyor..."
+          cp Payload/MyProject8mobile.app/Info.plist Payload/App.app/Info.plist
+
+          echo "-> Watchdog önleyici UIKit bootstrap yazılıyor..."
           cat << 'EOF' > unreal_bootstrap.cpp
           #import <UIKit/UIKit.h>
           #include <pthread.h>
@@ -99,14 +105,17 @@ workflows:
           }
           EOF
           
-          echo "-> SideStore'un beklediği tam konuma (App.app/MyProject8mobile) derleniyor..."
+          echo "-> Binary her iki .app içine de derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/MyProject8mobile.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
           clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
+          
+          chmod +x Payload/MyProject8mobile.app/MyProject8mobile
           chmod +x Payload/App.app/MyProject8mobile
 
           echo "-> IPA paketi oluşturuluyor..."
           zip -r build.ipa Payload
-          echo "-> İşlem başarıyla tamamlandı!"
+          echo "-> İşlem tamamlandı!"
           
     artifacts:
       - "*.ipa"
