@@ -15,40 +15,8 @@ workflows:
           echo "-> Unreal cook dosyaları App.app içine kopyalanıyor..."
           cp -R MyProject8mobile/* Payload/App.app/ || true
           
-          echo "-> Geçerli Info.plist yazılıyor..."
-          cat << 'EOF' > Payload/App.app/Info.plist
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleDisplayName</key>
-    <string>MyProject8mobile</string>
-    <key>CFBundleExecutable</key>
-    <string>MyProject8mobile</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.instawqyl.myproject8mobile</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>MyProject8mobile</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>MinimumOSVersion</key>
-    <string>14.0</string>
-    <key>UIDeviceFamily</key>
-    <array>
-        <integer>1</integer>
-        <integer>2</integer>
-    </array>
-</dict>
-</plist>
-EOF
+          echo "-> Info.plist dosyası oluşturuluyor..."
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleDevelopmentRegion</key>\n    <string>en</string>\n    <key>CFBundleDisplayName</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundleExecutable</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.instawqyl.myproject8mobile</string>\n    <key>CFBundleInfoDictionaryVersion</key>\n    <string>6.0</string>\n    <key>CFBundleName</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundlePackageType</key>\n    <string>APPL</string>\n    <key>CFBundleShortVersionString</key>\n    <string>1.0</string>\n    <key>CFBundleVersion</key>\n    <string>1</string>\n    <key>MinimumOSVersion</key>\n    <string>14.0</string>\n    <key>UIDeviceFamily</key>\n    <array>\n        <integer>1</integer>\n        <integer>2</integer>\n    </array>\n</dict>\n</plist>' > Payload/App.app/Info.plist
 
           echo "-> Bootstrap C++ kodu yazılıyor..."
           cat << 'EOF' > unreal_bootstrap.cpp
@@ -97,15 +65,12 @@ EOF
           }
           EOF
           
-          echo "-> Executable tam olarak App.app/MyProject8mobile konumuna derleniyor..."
+          echo "-> Executable derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
           
           echo "-> Çalıştırma yetkisi veriliyor..."
           chmod +x Payload/App.app/MyProject8mobile
-
-          echo "-> App.app içeriği kontrol ediliyor:"
-          ls -la Payload/App.app/
 
           echo "-> Paket zipleniyor..."
           zip -r build.ipa Payload
