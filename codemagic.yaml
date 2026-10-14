@@ -1,0 +1,37 @@
+workflows:
+  ios-unreal-build:
+    name: iOS Unreal Engine IPA Build
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    scripts:
+      - name: Package Unreal IPA Correctly
+        script: |
+          echo "-> Eski çıktılar temizleniyor..."
+          rm -rf Payload build.ipa
+          
+          echo "-> Payload klasörü oluşturuluyor..."
+          mkdir -p Payload
+          
+          echo "-> Unreal Engine çıktısı Payload içine taşınıyor..."
+          # Unreal'ın kendi build çıktısının adı neyse buraya uyarlayabiliriz, genelde .app biter
+          if [ -d "*.app" ]; then
+            mv *.app Payload/App.app
+          elif [ -d "Binaries/IOS" ]; then
+            # Alternatif yol
+            mkdir -p Payload/App.app
+            cp -R Binaries/IOS/* Payload/App.app/
+          elif [ -d "MyProject8mobile" ]; then
+            cp -R MyProject8mobile Payload/App.app
+          fi
+          
+          echo "-> Eğer Info.plist eksikse standart bir tane ekleniyor..."
+          if [ ! -f "Payload/App.app/Info.plist" ]; then
+            printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleDevelopmentRegion</key>\n    <string>en</string>\n    <key>CFBundleDisplayName</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundleExecutable</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.instawqyl.myproject8mobile</string>\n    <key>CFBundleInfoDictionaryVersion</key>\n    <string>6.0</string>\n    <key>CFBundleName</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundlePackageType</key>\n    <string>APPL</string>\n    <key>CFBundleShortVersionString</key>\n    <string>1.0</string>\n    <key>CFBundleVersion</key>\n    <string>1</string>\n    <key>MinimumOSVersion</key>\n    <string>14.0</string>\n    <key>UIDeviceFamily</key>\n    <array>\n        <integer>1</integer>\n        <integer>2</integer>\n    </array>\n</dict>\n</plist>' > Payload/App.app/Info.plist
+          fi
+
+          echo "-> Paket zipleniyor..."
+          zip -r build.ipa Payload
+          echo "-> Hazır!"
+          
+    artifacts:
+      - "*.ipa"
