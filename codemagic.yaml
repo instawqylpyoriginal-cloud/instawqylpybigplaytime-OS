@@ -4,15 +4,16 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     scripts:
-      - name: Compile Native C++ Unreal iOS Bridge and Package IPA
+      - name: Compile and Package IPA
         script: |
-          echo "-> Payload ve .app klasör yapısı oluşturuluyor..."
+          echo "-> Klasör yapısı temizleniyor ve oluşturuluyor..."
+          rm -rf Payload
           mkdir -p Payload/MyProject8mobile.app
           
-          echo "-> Cook edilmiş dosyalar .app içine kopyalanıyor..."
+          echo "-> Cook dosyaları kopyalanıyor..."
           cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ || true
           
-          echo "-> Gelişmiş iOS Info.plist oluşturuluyor..."
+          echo "-> Info.plist yazılıyor..."
           cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -43,16 +44,13 @@ workflows:
                   <integer>1</integer>
                   <integer>2</integer>
               </array>
-              <key>UILaunchStoryboardName</key>
-              <string></string>
           </dict>
           </plist>
           EOF
 
-          echo "-> Gerçek C++ Unreal iOS Engine Bridge yazılıyor..."
+          echo "-> Native iOS köprüsü yazılıyor..."
           cat << 'EOF' > unreal_bridge.cpp
           #import <UIKit/UIKit.h>
-          #include <iostream>
 
           @interface AppDelegate : UIResponder <UIApplicationDelegate>
           @property (strong, nonatomic) UIWindow *window;
@@ -60,17 +58,13 @@ workflows:
 
           @implementation AppDelegate
           - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-              std::cout << ">>> Unreal Engine iOS Native Bridge: Engine Initialized Successfully!" << std::endl;
-              
-              // iOS ekranını oluştur ve çökme/siyah ekranı önlemek için Unreal tarzı yükleme ekranı (View) yerleştir
               self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
               UIViewController *vc = [[UIViewController alloc] init];
               vc.view.backgroundColor = [UIColor blackColor];
               
-              // Ekrana oyunun adını yazdıran şık bir label ekleyelim ki motorun çalıştığını görelim
-              UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 300, 50)];
+              UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 60)];
               label.center = vc.view.center;
-              label.text = @"MyProject8mobile (UE Engine)";
+              label.text = @"MyProject8mobile";
               label.textColor = [UIColor whiteColor];
               label.textAlignment = NSTextAlignmentCenter;
               [vc.view addSubview:label];
@@ -88,14 +82,14 @@ workflows:
           }
           EOF
 
-          echo "-> Mac Clang ile ARM64 mimarisinde Objective-C++ tabanlı native binary derleniyor..."
+          echo "-> Doğru isimle (MyProject8mobile) derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bridge.cpp -o Payload/MyProject8mobile.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
           chmod +x Payload/MyProject8mobile.app/MyProject8mobile
 
-          echo "-> IPA paketi oluşturuluyor..."
+          echo "-> IPA paketleniyor..."
           zip -r build.ipa Payload
-          echo "-> İşlem tamam!"
+          echo "-> Tamamdır!"
           
     artifacts:
       - "*.ipa"
