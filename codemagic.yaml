@@ -4,77 +4,34 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     scripts:
-      - name: Build Valid IPA Package
+      - name: Package Unreal IPA Correctly
         script: |
           echo "-> Eski çıktılar temizleniyor..."
           rm -rf Payload build.ipa
           
-          echo "-> Payload/App.app klasör yapısı oluşturuluyor..."
-          mkdir -p Payload/App.app
+          echo "-> Payload klasörü oluşturuluyor..."
+          mkdir -p Payload
           
-          echo "-> Unreal cook dosyaları App.app içine kopyalanıyor..."
-          cp -R MyProject8mobile/* Payload/App.app/ || true
+          echo "-> Unreal Engine çıktısı Payload içine taşınıyor..."
+          # Unreal'ın kendi build çıktısının adı neyse buraya uyarlayabiliriz, genelde .app biter
+          if [ -d "*.app" ]; then
+            mv *.app Payload/App.app
+          elif [ -d "Binaries/IOS" ]; then
+            # Alternatif yol
+            mkdir -p Payload/App.app
+            cp -R Binaries/IOS/* Payload/App.app/
+          elif [ -d "MyProject8mobile" ]; then
+            cp -R MyProject8mobile Payload/App.app
+          fi
           
-          echo "-> Info.plist dosyası oluşturuluyor..."
-          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleDevelopmentRegion</key>\n    <string>en</string>\n    <key>CFBundleDisplayName</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundleExecutable</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.instawqyl.myproject8mobile</string>\n    <key>CFBundleInfoDictionaryVersion</key>\n    <string>6.0</string>\n    <key>CFBundleName</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundlePackageType</key>\n    <string>APPL</string>\n    <key>CFBundleShortVersionString</key>\n    <string>1.0</string>\n    <key>CFBundleVersion</key>\n    <string>1</string>\n    <key>MinimumOSVersion</key>\n    <string>14.0</string>\n    <key>UIDeviceFamily</key>\n    <array>\n        <integer>1</integer>\n        <integer>2</integer>\n    </array>\n</dict>\n</plist>' > Payload/App.app/Info.plist
-
-          echo "-> Bootstrap C++ kodu yazılıyor..."
-          cat << 'EOF' > unreal_bootstrap.cpp
-          #import <UIKit/UIKit.h>
-          #include <pthread.h>
-          #include <unistd.h>
-          #include <stdio.h>
-
-          void* engine_thread(void* arg) {
-              printf("Unreal Engine worker thread running...\n");
-              while(1) { sleep(1); }
-              return NULL;
-          }
-
-          @interface AppDelegate : UIResponder <UIApplicationDelegate>
-          @property (strong, nonatomic) UIWindow *window;
-          @end
-
-          @implementation AppDelegate
-          - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-              self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-              UIViewController *vc = [[UIViewController alloc] init];
-              vc.view.backgroundColor = [UIColor blackColor];
-              
-              UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 50)];
-              label.center = vc.view.center;
-              label.text = @"MyProject8mobile";
-              label.textColor = [UIColor whiteColor];
-              label.textAlignment = NSTextAlignmentCenter;
-              [vc.view addSubview:label];
-              
-              self.window.rootViewController = vc;
-              [self.window makeKeyAndVisible];
-              
-              pthread_t t;
-              pthread_create(&t, NULL, engine_thread, NULL);
-              
-              return YES;
-          }
-          @end
-
-          int main(int argc, char *argv[]) {
-              @autoreleasepool {
-                  return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
-              }
-          }
-          EOF
-          
-          echo "-> Executable derleniyor..."
-          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
-          
-          echo "-> Çalıştırma yetkisi veriliyor..."
-          chmod +x Payload/App.app/MyProject8mobile
+          echo "-> Eğer Info.plist eksikse standart bir tane ekleniyor..."
+          if [ ! -f "Payload/App.app/Info.plist" ]; then
+            printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n    <key>CFBundleDevelopmentRegion</key>\n    <string>en</string>\n    <key>CFBundleDisplayName</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundleExecutable</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundleIdentifier</key>\n    <string>com.instawqyl.myproject8mobile</string>\n    <key>CFBundleInfoDictionaryVersion</key>\n    <string>6.0</string>\n    <key>CFBundleName</key>\n    <string>MyProject8mobile</string>\n    <key>CFBundlePackageType</key>\n    <string>APPL</string>\n    <key>CFBundleShortVersionString</key>\n    <string>1.0</string>\n    <key>CFBundleVersion</key>\n    <string>1</string>\n    <key>MinimumOSVersion</key>\n    <string>14.0</string>\n    <key>UIDeviceFamily</key>\n    <array>\n        <integer>1</integer>\n        <integer>2</integer>\n    </array>\n</dict>\n</plist>' > Payload/App.app/Info.plist
+          fi
 
           echo "-> Paket zipleniyor..."
           zip -r build.ipa Payload
-          echo "-> İşlem tamamlandı!"
+          echo "-> Hazır!"
           
     artifacts:
       - "*.ipa"
