@@ -4,55 +4,21 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     scripts:
-      - name: Generate Direct App.app Package with Verification
+      - name: Fix Executable and Generate App.app Package
         script: |
-          echo "-> Temizlik yapılıyor..."
+          echo "-> Eski çıktılar temizleniyor..."
           rm -rf Payload build.ipa
           
-          echo "-> SideStore uyumlu App.app klasörü oluşturuluyor..."
+          echo "-> Payload/App.app klasör yapısı oluşturuluyor..."
           mkdir -p Payload/App.app
           
-          echo "-> Cook dosyaları App.app içine kopyalanıyor..."
+          echo "-> Proje içeriği App.app içine kopyalanıyor..."
           cp -R MyProject8mobile/* Payload/App.app/ || true
           
-          echo "-> Info.plist yazılıyor..."
-          cat << 'EOF' > Payload/App.app/Info.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleDevelopmentRegion</key>
-              <string>en</string>
-              <key>CFBundleDisplayName</key>
-              <string>MyProject8mobile</string>
-              <key>CFBundleExecutable</key>
-              <string>MyProject8mobile</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.instawqyl.myproject8mobile</string>
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-              <key>CFBundleName</key>
-              <string>MyProject8mobile</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>MinimumOSVersion</key>
-              <string>14.0</string>
-              <key>UIDeviceFamily</key>
-              <array>
-                  <integer>1</integer>
-                  <integer>2</integer>
-              </array>
-              <key>UILaunchStoryboardName</key>
-              <string>LaunchScreen</string>
-          </dict>
-          </plist>
-          EOF
+          echo "-> Info.plist kopyalanıyor..."
+          cp Info.plist Payload/App.app/Info.plist
 
-          echo "-> Watchdog önleyici UIKit bootstrap yazılıyor..."
+          echo "-> Bootstrap C++ kodu yazılıyor..."
           cat << 'EOF' > unreal_bootstrap.cpp
           #import <UIKit/UIKit.h>
           #include <pthread.h>
@@ -61,9 +27,7 @@ workflows:
 
           void* engine_thread(void* arg) {
               printf("Unreal Engine worker thread running...\n");
-              while(1) {
-                  sleep(1);
-              }
+              while(1) { sleep(1); }
               return NULL;
           }
 
@@ -101,18 +65,19 @@ workflows:
           }
           EOF
           
-          echo "-> Doğrudan App.app/MyProject8mobile konumuna derleniyor..."
-          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          echo "-> Executable tam olarak App.app/MyProject8mobile konumuna derleniyor..."
+          SDK_PATH=$(xcrun --sdk iphoneos --showsdkpath)
           clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
           
-          echo "-> App.app içeriği doğrulanıyor:"
-          ls -la Payload/App.app/
-          
+          echo "-> Çalıştırma yetkisi veriliyor..."
           chmod +x Payload/App.app/MyProject8mobile
 
-          echo "-> IPA paketi oluşturuluyor..."
+          echo "-> App.app içeriği kontrol ediliyor (MyProject8mobile var mı?):"
+          ls -la Payload/App.app/
+
+          echo "-> Paket zipleniyor..."
           zip -r build.ipa Payload
-          echo "-> İşlem tamamlandı!"
+          echo "-> Paketleme başarıyla tamamlandı!"
           
     artifacts:
       - "*.ipa"
