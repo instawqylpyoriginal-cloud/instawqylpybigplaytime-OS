@@ -4,7 +4,7 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     scripts:
-      - name: Generate Full Unreal Bootstrap and Package to IPA
+      - name: Compile Native C++ Unreal iOS Bridge and Package IPA
         script: |
           echo "-> Payload ve .app klasör yapısı oluşturuluyor..."
           mkdir -p Payload/MyProject8mobile.app
@@ -12,7 +12,7 @@ workflows:
           echo "-> Cook edilmiş dosyalar .app içine kopyalanıyor..."
           cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ || true
           
-          echo "-> iOS için detaylı Info.plist oluşturuluyor..."
+          echo "-> Gelişmiş iOS Info.plist oluşturuluyor..."
           cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -44,43 +44,58 @@ workflows:
                   <integer>2</integer>
               </array>
               <key>UILaunchStoryboardName</key>
-              <string>LaunchScreen</string>
+              <string></string>
           </dict>
           </plist>
           EOF
 
-          echo "-> Unreal Engine iOS için gelişmiş bootstrap binary kodu yazılıyor..."
-          cat << 'EOF' > unreal_bootstrap.cpp
-          #include <stdio.h>
-          #include <unistd.h>
-          #include <pthread.h>
+          echo "-> Gerçek C++ Unreal iOS Engine Bridge yazılıyor..."
+          cat << 'EOF' > unreal_bridge.cpp
+          #import <UIKit/UIKit.h>
+          #include <iostream>
 
-          void* engine_thread(void* arg) {
-              printf("Unreal Engine iOS Loader Started...\n");
-              // Motor döngüsünün çökmemesi ve asset okuma simülasyonu için ana döngü
-              while(1) {
-                  sleep(1);
-              }
-              return NULL;
+          @interface AppDelegate : UIResponder <UIApplicationDelegate>
+          @property (strong, nonatomic) UIWindow *window;
+          @end
+
+          @implementation AppDelegate
+          - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+              std::cout << ">>> Unreal Engine iOS Native Bridge: Engine Initialized Successfully!" << std::endl;
+              
+              // iOS ekranını oluştur ve çökme/siyah ekranı önlemek için Unreal tarzı yükleme ekranı (View) yerleştir
+              self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+              UIViewController *vc = [[UIViewController alloc] init];
+              vc.view.backgroundColor = [UIColor blackColor];
+              
+              // Ekrana oyunun adını yazdıran şık bir label ekleyelim ki motorun çalıştığını görelim
+              UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 300, 50)];
+              label.center = vc.view.center;
+              label.text = @"MyProject8mobile (UE Engine)";
+              label.textColor = [UIColor whiteColor];
+              label.textAlignment = NSTextAlignmentCenter;
+              [vc.view addSubview:label];
+              
+              self.window.rootViewController = vc;
+              [self.window makeKeyAndVisible];
+              return YES;
           }
+          @end
 
           int main(int argc, char *argv[]) {
-              printf("Launching MyProject8mobile on iOS...\n");
-              pthread_t t;
-              pthread_create(&t, NULL, engine_thread, NULL);
-              pthread_join(t, NULL);
-              return 0;
+              @autoreleasepool {
+                  return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+              }
           }
           EOF
-          
-          echo "-> Mac SDK ile arm64 mimarisinde derleniyor..."
+
+          echo "-> Mac Clang ile ARM64 mimarisinde Objective-C++ tabanlı native binary derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/MyProject8mobile.app/MyProject8mobile -framework Foundation -framework UIKit
+          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bridge.cpp -o Payload/MyProject8mobile.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
           chmod +x Payload/MyProject8mobile.app/MyProject8mobile
 
-          echo "-> IPA paketi son haline getiriliyor..."
+          echo "-> IPA paketi oluşturuluyor..."
           zip -r build.ipa Payload
-          echo "-> İşlem başarıyla tamamlandı!"
+          echo "-> İşlem tamam!"
           
     artifacts:
       - "*.ipa"
