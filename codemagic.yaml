@@ -6,15 +6,15 @@ workflows:
     scripts:
       - name: Generate Full Unreal Bootstrap and Package to IPA
         script: |
-          echo "-> SideStore'un aradığı standart App.app klasör yapısı oluşturuluyor..."
+          echo "-> SideStore'un kesinlikle istediği MyProject8mobile.app yapısı kuruluyor..."
           rm -rf Payload
-          mkdir -p Payload/App.app
+          mkdir -p Payload/MyProject8mobile.app
           
           echo "-> Cook edilmiş dosyalar .app içine kopyalanıyor..."
-          cp -R MyProject8mobile/* Payload/App.app/ || true
+          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ || true
           
-          echo "-> iOS için detaylı Info.plist oluşturuluyor..."
-          cat << 'EOF' > Payload/App.app/Info.plist
+          echo "-> Info.plist yazılıyor..."
+          cat << 'EOF' > Payload/MyProject8mobile.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -99,10 +99,10 @@ workflows:
           }
           EOF
           
-          echo "-> Mac SDK ile arm64 mimarisinde tam uyumlu yere derleniyor..."
+          echo "-> Mac SDK ile arm64 mimarisinde MyProject8mobile.app/MyProject8mobile konumuna derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
-          chmod +x Payload/App.app/MyProject8mobile
+          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/MyProject8mobile.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
+          chmod +x Payload/MyProject8mobile.app/MyProject8mobile
 
           echo "-> IPA paketi SideStore formatında paketleniyor..."
           zip -r build.ipa Payload
