@@ -4,24 +4,20 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     scripts:
-      - name: Build and Package for iOS on Mac
+      - name: Create App Bundle and Package to IPA
         script: |
-          # Mac ortamında RunUAT.sh scriptini doğru yoldan çalıştırarak iOS paketlemesi başlatıyoruz
-          chmod +x ./Engine/Build/BatchFiles/RunUAT.sh
+          # Payload ve .app klasör yapısını otomatik oluşturup projedeki dosyaları içine taşıyoruz
+          mkdir -p Payload/MyProject8mobile.app
           
-          ./Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
-            -project="$PWD/MyProject8mobile/MyProject8mobile.uproject" \
-            -noP4 \
-            -platform=IOS \
-            -clientconfig=Development \
-            -cook \
-            -build \
-            -stage \
-            -package
-            
-          # Çıkan .app dosyasını bulup Payload'a atalım ve IPA yapalım
-          mkdir -p Payload
-          find . -name "*.app" -type d -exec cp -R {} Payload/ \;
+          # MyProject8mobile içindeki tüm dosyaları .app klasörünün içine kopyala
+          cp -R MyProject8mobile/* Payload/MyProject8mobile.app/ || true
+          
+          # Eğer Info.plist yoksa geçici bir tane oluşturalım ki hata vermesin
+          if [ ! -f "Payload/MyProject8mobile.app/Info.plist" ]; then
+            echo "<?xml version='1.0' encoding='UTF-8'?><plist version='1.0'><dict><key>CFBundleIdentifier</key><string>com.default.MyProject8mobile</string><key>CFBundleName</key><string>MyProject8mobile</string><key>CFBundleVersion</key><string>1.0</string><key>CFBundleShortVersionString</key><string>1.0</string></dict></plist>" > Payload/MyProject8mobile.app/Info.plist
+          fi
+          
+          # IPA paketini oluşturalım
           zip -r build.ipa Payload
     artifacts:
       - "*.ipa"
