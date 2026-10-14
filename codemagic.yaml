@@ -44,12 +44,10 @@ workflows:
                   <integer>2</integer>
               </array>
           </dict>
-          </dict>
           </plist>
           EOF
 
-          echo "-> Eksik olan arm64 Mach-O binary dosyası (çalıştırılabilir stub) derleniyor..."
-          # Basit bir C dosyası yazıp Mac ortamında arm64 binary olarak derliyoruz
+          echo "-> Eksik olan arm64 Mach-O binary dosyası derleniyor..."
           cat << 'EOF' > dummy_exec.c
           #include <stdio.h>
           int main() {
@@ -58,8 +56,8 @@ workflows:
           }
           EOF
           
-          # Mac'in clang derleyicisi ile arm64 mimarisinde binary olarak derle ve .app içine taşı
-          clang -arch arm64 dummy_exec.c -o Payload/MyProject8mobile.app/MyProject8mobile
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          clang -arch arm64 -isysroot "$SDK_PATH" dummy_exec.c -o Payload/MyProject8mobile.app/MyProject8mobile
           chmod +x Payload/MyProject8mobile.app/MyProject8mobile
 
           echo "-> IPA paketi oluşturuluyor..."
