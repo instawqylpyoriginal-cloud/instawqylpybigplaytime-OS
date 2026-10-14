@@ -1,22 +1,22 @@
-workflows:
+Workflows:
   ios-unreal-build:
-    name: iOS Unreal Engine IPA Build
-    max_build_duration: 120
-    instance_type: mac_mini_m1
-    scripts:
-      - name: Generate Direct App.app Package
-        script: |
-          echo "-> Temizlik yapılıyor..."
-          rm -rf Payload build.ipa
+    Name: iOS Unreal Engine IPA Build
+    Max_build_duration: 120
+    Instance_type: mac_mini_m1
+    Scripts:
+      - name: Generate Direct App.app Package with Verification
+        Script: |
+          Echo "-> Temizlik yapılıyor..."
+          Rm -rf Payload build.ipa
           
-          echo "-> SideStore'un bizzat aradığı tekil App.app klasörü oluşturuluyor..."
-          mkdir -p Payload/App.app
+          Echo "-> SideStore uyumlu App.app klasörü oluşturuluyor..."
+          Mkdir -p Payload/App.app
           
-          echo "-> Cook dosyaları doğrudan App.app içine kopyalanıyor..."
-          cp -R MyProject8mobile/* Payload/App.app/ || true
+          Echo "-> Cook dosyaları App.app içine kopyalanıyor..."
+          Cp -R MyProject8mobile/* Payload/App.app/ || true
           
-          echo "-> Info.plist yazılıyor..."
-          cat << 'EOF' > Payload/App.app/Info.plist
+          Echo "-> Info.plist yazılıyor..."
+          Cat << 'EOF' > Payload/App.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -52,19 +52,19 @@ workflows:
           </plist>
           EOF
 
-          echo "-> Watchdog önleyici UIKit bootstrap yazılıyor..."
-          cat << 'EOF' > unreal_bootstrap.cpp
+          Echo "-> Watchdog önleyici UIKit bootstrap yazılıyor..."
+          Cat << 'EOF' > unreal_bootstrap.cpp
           #import <UIKit/UIKit.h>
           #include <pthread.h>
           #include <unistd.h>
           #include <stdio.h>
 
-          void* engine_thread(void* arg) {
-              printf("Unreal Engine worker thread running...\n");
-              while(1) {
-                  sleep(1);
+          Void* engine_thread(void* arg) {
+              Printf("Unreal Engine worker thread running...\n");
+              While(1) {
+                  Sleep(1);
               }
-              return NULL;
+              Return NULL;
           }
 
           @interface AppDelegate : UIResponder <UIApplicationDelegate>
@@ -73,42 +73,46 @@ workflows:
 
           @implementation AppDelegate
           - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-              self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+              Self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
               UIViewController *vc = [[UIViewController alloc] init];
-              vc.view.backgroundColor = [UIColor blackColor];
+              Vc.view.backgroundColor = [UIColor blackColor];
               
               UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 50)];
-              label.center = vc.view.center;
-              label.text = @"MyProject8mobile";
-              label.textColor = [UIColor whiteColor];
-              label.textAlignment = NSTextAlignmentCenter;
+              Label.center = vc.view.center;
+              Label.text = @"MyProject8mobile";
+              Label.textColor = [UIColor whiteColor];
+              Label.textAlignment = NSTextAlignmentCenter;
               [vc.view addSubview:label];
               
-              self.window.rootViewController = vc;
+              Self.window.rootViewController = vc;
               [self.window makeKeyAndVisible];
               
-              pthread_t t;
-              pthread_create(&t, NULL, engine_thread, NULL);
+              Pthread_t t;
+              Pthread_create(&t, NULL, engine_thread, NULL);
               
-              return YES;
+              Return YES;
           }
           @end
 
-          int main(int argc, char *argv[]) {
+          Int main(int argc, char *argv[]) {
               @autoreleasepool {
-                  return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+                  Return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
               }
           }
           EOF
           
-          echo "-> Doğrudan App.app/MyProject8mobile konumuna derleniyor..."
+          Echo "-> Doğrudan App.app/MyProject8mobile konumuna derleniyor..."
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
-          chmod +x Payload/App.app/MyProject8mobile
+          Clang++ -arch arm64 -isysroot "$SDK_PATH" unreal_bootstrap.cpp -o Payload/App.app/MyProject8mobile -framework Foundation -framework UIKit -framework CoreGraphics
+          
+          Echo "-> App.app içeriği doğrulanıyor:"
+          Ls -la Payload/App.app/
+          
+          Chmod +x Payload/App.app/MyProject8mobile
 
-          echo "-> IPA paketi oluşturuluyor..."
-          zip -r build.ipa Payload
-          echo "-> İşlem tamamlandı!"
+          Echo "-> IPA paketi oluşturuluyor..."
+          Zip -r build.ipa Payload
+          Echo "-> İşlem tamamlandı!"
           
     artifacts:
       - "*.ipa"
