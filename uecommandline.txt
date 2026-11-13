@@ -1,1 +1,0 @@
--project="../../../MyProject8mobile/MyProject8mobile.uproject"
