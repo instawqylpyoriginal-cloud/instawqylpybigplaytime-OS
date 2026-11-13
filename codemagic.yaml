@@ -9,8 +9,13 @@ workflows:
       - name: Build Unreal Project
         script: |
           echo "-> Unreal Engine projesi derleniyor..."
-          # Eğer projenin özel bir build komutu varsa buraya gelebilir, 
-          # yoksa Codemagic'in varsayılan Unreal derleme adımları burada koşar.
+          # Unreal Engine'in macOS üzerindeki BuildCookRun komutu
+          # Not: Eğer Unreal Engine özel bir dizindeyse veya source build ise yolunu buraya yazmalısın.
+          # Örnek standart Mac BuildCookRun komutu:
+          ./Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
+            -project="$CM_BUILD_DIR/MyProject3.uproject" \
+            -noP4 -platform=IOS -clientconfig=Shipping -serverconfig=Shipping \
+            -cook -build -stage -pak -archive -archivedirectory="$CM_BUILD_DIR/StagedBuilds"
           
       - name: Fix App Structure and Rename to UnrealGame
         script: |
@@ -21,34 +26,30 @@ workflows:
           APP_DIR=$(find . -type d -name "App.app" | head -n 1)
           
           if [ -z "$APP_DIR" ]; then
-              echo "Uyarı: App.app bulunamadı, doğrudan Payload kontrol ediliyor..."
-              APP_DIR="Payload/App.app"
+              echo "Uyarı: App.app bulunamadı, StagedBuilds kontrol ediliyor..."
+              APP_DIR=$(find StagedBuilds -type d -name "*.app" | head -n 1)
           fi
           
           if [ -d "$APP_DIR" ]; then
               PARENT_DIR=$(dirname "$APP_DIR")
-              
               echo "Bulunan klasör: $APP_DIR"
               
               # 2. Klasör adını UnrealGame.app yap
               mv "$APP_DIR" "$PARENT_DIR/UnrealGame.app"
               NEW_APP_PATH="$PARENT_DIR/UnrealGame.app"
               
-              # 3. İçindeki çalıştırılabilir ana binary dosyasının adını UnrealGame yap (Eğer adı App ise)
+              # 3. İçindeki çalıştırılabilir binary adını düzenle
               if [ -f "$NEW_APP_PATH/App" ]; then
                   mv "$NEW_APP_PATH/App" "$NEW_APP_PATH/UnrealGame"
-                  echo "Binary adı UnrealGame olarak değiştirildi."
-              elif [ -f "$NEW_APP_PATH/MyProject" ]; then
-                  mv "$NEW_APP_PATH/MyProject" "$NEW_APP_PATH/UnrealGame"
-                  echo "Binary adı UnrealGame olarak değiştirildi."
+              elif [ -f "$NEW_APP_PATH/MyProject3" ]; then
+                  mv "$NEW_APP_PATH/MyProject3" "$NEW_APP_PATH/UnrealGame"
               fi
               
-              # 4. Info.plist içindeki CFBundleExecutable ve CFBundleName değerlerini UnrealGame yap
+              # 4. Info.plist güncellemesi
               PLIST_PATH="$NEW_APP_PATH/Info.plist"
               if [ -f "$PLIST_PATH" ]; then
                   plutil -replace CFBundleExecutable -string "UnrealGame" "$PLIST_PATH"
                   plutil -replace CFBundleName -string "UnrealGame" "$PLIST_PATH"
-                  echo "Info.plist başarıyla UnrealGame olarak güncellendi."
               fi
           else
               echo "Hata: Hiçbir .app klasörü bulunamadı!"
@@ -60,19 +61,13 @@ workflows:
           echo "=== Hatasız IPA Paketlemesi Yapılıyor ==="
           cd $CM_BUILD_DIR
           
-          # Payload klasörünün içinde sadece UnrealGame.app olduğundan emin ol
-          mkdir -p final_payload
-          
-          # UnrealGame.app klasörünü son payload içine taşı
+          mkdir -p Payload
           FOUND_APP=$(find . -type d -name "UnrealGame.app" | head -n 1)
-          cp -R "$FOUND_APP" final_payload/
+          cp -R "$FOUND_APP" Payload/
           
-          cd final_payload
-          zip -r ../UnrealGame_Final.ipa Payload 2>/dev/null || zip -r ../UnrealGame_Final.ipa .
-          cd ..
-          
+          zip -r UnrealGame_Final.ipa Payload
           echo "IPA başarıyla paketlendi: UnrealGame_Final.ipa"
 
     artifacts:
-      - "*.ipa"
       - "UnrealGame_Final.ipa"
+      - "**/build/**/*.ipa"
