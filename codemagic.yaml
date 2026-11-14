@@ -1,5 +1,5 @@
 workflows:
-  ues-ios-ipa-build:
+  ios-unreal-build:
     name: UE5 iOS IPA Build
     instance_type: mac_mini_m2
     environment:
