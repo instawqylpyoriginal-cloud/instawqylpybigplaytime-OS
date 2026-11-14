@@ -2,15 +2,11 @@ workflows:
   ios-unreal-build:
     name: UE5 iOS IPA Build
     instance_type: mac_mini_m2
-    environment:
-      vars:
-        # Unreal Engine 5.3'ün macOS üzerindeki varsayılan dizini
-        UE_PATH: "/Applications/Unreal Engine 5.3.app"
     scripts:
       - name: Build Unreal Project
         script: |
-          # RunUAT betiği üzerinden iOS için paketleme ve arşivleme
-          "$UE_PATH/Contents/Enterprise/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun \
+          # Unreal Engine 5.3 macOS RunUAT tam yolu
+          /Applications/Unreal\ Engine\ 5.3.app/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
             -project="$FCI_BUILD_DIR/instawqylpybigplaytime-OS.uproject" \
             -noP4 -platform=IOS -clientconfig=Development -serverconfig=Development \
             -cook -allmaps -build -stage -pak -archive -archivedirectory="$FCI_OUTPUT_DIR"
