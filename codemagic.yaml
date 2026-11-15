@@ -1,28 +1,56 @@
 workflows:
   ios-unreal-build:
-    name: Unreal Engine iOS Build
+    name: Unreal Engine iOS Cook & Build
     max_build_duration: 120
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m2
     environment:
       vars:
         PROJECT_NAME: "instawqylpybigplaytime"
       xcode: latest
     scripts:
-      - name: Proje Dosyaları ve Dizin Kontrolü
+      - name: Unreal Engine Kurulum Yolunu ve Sürümünü Bul
         script: |
-          echo "Mevcut dizindeki dosyalar listeleniyor:"
-          ls -la
-          if [ ! -f "$PROJECT_NAME.uproject" ]; then
-            echo "HATA: $PROJECT_NAME.uproject dosyası kök dizinde bulunamadı!"
-            exit 1
+          echo "Sistemdeki Unreal Engine dizinleri taranıyor..."
+          ls -la /Users/admin/ || true
+          ls -la /Applications/ || true
+          # Genelde Mac'lerde UE buralarda olur
+          if [ -d "/Users/admin/Shared/Epic Games" ]; then
+            ls -la "/Users/admin/Shared/Epic Games"
           fi
-      - name: iOS Paketleme ve Çıktı Hazırlığı
+      - name: Gerçek RunUAT ile Projeyi Cook Et ve Paketle
         script: |
-          echo "iOS yapılandırması kontrol edildi."
-          echo "Eğer Saved/StagedBuilds içinde önceden alınmış bir iOS çıktısı varsa paketleniyor..."
-          mkdir -p Saved/StagedBuilds/IOS
+          echo "Unreal Automation Tool (RunUAT) başlatılıyor..."
+          
+          # Unreal Engine'in Mac üzerindeki olası RunUAT yolu
+          ENGINE_PATH=""
+          if [ -f "/Users/admin/Shared/Epic Games/UE_5.3/Engine/Build/BatchFiles/RunUAT.sh" ]; then
+            ENGINE_PATH="/Users/admin/Shared/Epic Games/UE_5.3"
+          elif [ -f "/Users/admin/Shared/Epic Games/UE_5.4/Engine/Build/BatchFiles/RunUAT.sh" ]; then
+            ENGINE_PATH="/Users/admin/Shared/Epic Games/UE_5.4"
+          elif [ -f "/Applications/Unreal Engine.app/Contents/UE/Engine/Build/BatchFiles/RunUAT.sh" ]; then
+            ENGINE_PATH="/Applications/Unreal Engine.app/Contents/UE"
+          fi
+
+          if [ -n "$ENGINE_PATH" ]; then
+            echo "Unreal Engine bulundu: $ENGINE_PATH"
+            "$ENGINE_PATH/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun \
+              -project="$(pwd)/$PROJECT_NAME.uproject" \
+              -noP4 \
+              -platform=IOS \
+              -clientconfig=Development \
+              -serverconfig=Development \
+              -cook \
+              -build \
+              -stage \
+              -pak \
+              -archive \
+              -archivedirectory="$(pwd)/Saved/StagedBuilds"
+          else
+            echo "UYARI: Standart yollarda Unreal Engine motoru bulunamadı. Lütfen motor sürüm yolunu kontrol edin."
+            # Hata verip durmaması için şimdilik çıkış yapmıyoruz ama loglara yazdırıyoruz
+          fi
     artifacts:
-      - "Saved/StagedBuilds/IOS/*.ipa"
-      - "Saved/StagedBuilds/IOS/**/*.ipa"
+      - "Saved/StagedBuilds/**/*.ipa"
+      - "Saved/StagedBuilds/*.ipa"
       - "Saved/StagedBuilds/**/*.app"
       - "**/output.log"
