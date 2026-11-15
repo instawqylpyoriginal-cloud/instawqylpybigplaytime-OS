@@ -1,11 +1,11 @@
 workflows:
-  ue-ios-build:
+  ios-unreal-build:
     name: Unreal Engine iOS Build
     max_build_duration: 120
     instance_type: mac_mini_m1
     environment:
       vars:
-        PROJECT_NAME: "instawqylpybigplaytime" # .uproject dosyanın adı (uzantısız)
+        PROJECT_NAME: "instawqylpybigplaytime"
       xcode: latest
     scripts:
       - name: Proje Dosyalarını Kontrol Et
@@ -14,8 +14,6 @@ workflows:
           ls -la
       - name: iOS Paketleme Hazırlığı
         script: |
-          echo "Unreal Engine iOS build ortamı hazırlanıyor..."
-          # Proje kök dizininde .uproject adının doğrulanması
           if [ ! -f "$PROJECT_NAME.uproject" ]; then
             echo "HATA: $PROJECT_NAME.uproject dosyası bulunamadı!"
             exit 1
