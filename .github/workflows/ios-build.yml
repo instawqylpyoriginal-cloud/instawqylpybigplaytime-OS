@@ -1,64 +1,50 @@
-name: Build iOS IPA for SideStore
+name: Unreal Engine 5.3 iOS Build
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # GitHub panelinden manuel tetikleme tuşu
 
 jobs:
   build-ios:
-    runs-on: macos-13
+    runs-on: macos-14 # M serisi Apple Silikon işlemcili en güçlü macOS runner
+    timeout-minutes: 120
+
     steps:
-      - name: Checkout Repository
+      - name: Depoyu Kopyala (Checkout)
         uses: actions/checkout@v4
 
-      - name: Prepare Project and Check Source
+      - name: Disk Alanını ve Sistem Bilgisini Kontrol Et
         run: |
-          echo "Proje dizini kontrol ediliyor..."
-          ls -la
-          
-          # Payload ve uygulama dizinlerini oluştur
-          mkdir -p Payload/MyProject8mobile.app
-          
-          # İçerik ve Uproject dosyalarını kopyala
-          cp -R Content Payload/MyProject8mobile.app/ 2>/dev/null || true
-          cp MyProject8mobile.uproject Payload/MyProject8mobile.app/
+          echo "Mevcut disk alanı:"
+          df -h
+          echo "Sistem bileşenleri kontrol ediliyor..."
+          sw_vers
 
-      - name: Package IPA (Xcode Build)
+      - name: Unreal Engine 5.3 Hazırlığı ve Motor Bağlantısı
         run: |
-          # Info.plist oluşturma
-          cat <<EOF > Payload/MyProject8mobile.app/Info.plist
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>MyProject8mobile</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.instawqyl.myproject8mobile</string>
-              <key>CFBundleName</key>
-              <string>MyProject8mobile</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>LSRequiresIPhoneOS</key>
-              <true/>
-              <key>MinimumOSVersion</key>
-              <string>14.0</string>
-          </dict>
-          </plist>
-          EOF
+          echo "Unreal Engine 5.3 ortamı yapılandırılıyor..."
+          # Not: UE 5.3 binary dosyaları devasa olduğu için, 
+          # daha önce hazırladığın bir zip/arşiv varsa buraya indirilebilir 
+          # veya motorun komut satırı araçları yola eklenebilir.
+          mkdir -p Saved/StagedBuilds/IOS
+          
+      - name: RunUAT ile iOS Paketlemesi (Cook & Package)
+        run: |
+          echo "BuildCookRun süreci tetikleniyor..."
+          # Örnek RunUAT komut yapısı (Motor yolu sağlandığında aktif olur):
+          # /Users/runner/UE5.3/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
+          #   -project="$GITHUB_WORKSPACE/instawqylpybigplaytime.uproject" \
+          #   -noP4 -platform=IOS -clientconfig=Development -cook -build -stage -pak -archive
+          
+          # Şimdilik test amaçlı klasör yapısını doğruluyoruz
+          echo "Paketleme simülasyonu tamamlandı."
 
-          # Mach-O Dummy Executable
-          echo '#!/bin/sh' > Payload/MyProject8mobile.app/MyProject8mobile
-          chmod +x Payload/MyProject8mobile.app/MyProject8mobile
-
-          # IPA Arşivi Oluşturma
-          zip -r MyProject8mobile_SideStore.ipa Payload
-
-      - name: Upload Valid IPA Artifact
+      - name: Oluşan IPA Dosyasını Artifact Olarak Kaydet
         uses: actions/upload-artifact@v4
         with:
-          name: MyProject8mobile-iOS-IPA
-          path: MyProject8mobile_SideStore.ipa
+          name: instawqylpybigplaytime-ios-ipa
+          path: |
+            Saved/StagedBuilds/IOS/**/*.ipa
+            Saved/StagedBuilds/IOS/*.ipa
+            **/output.log
