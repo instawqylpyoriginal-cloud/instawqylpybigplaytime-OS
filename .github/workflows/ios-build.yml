@@ -3,11 +3,11 @@ name: Unreal Engine 5.3 iOS Build
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch: # GitHub panelinden manuel tetikleme tuşu
+  workflow_dispatch:
 
 jobs:
   build-ios:
-    runs-on: macos-14 # M serisi Apple Silikon işlemcili en güçlü macOS runner
+    runs-on: macos-14
     timeout-minutes: 120
 
     steps:
@@ -18,27 +18,20 @@ jobs:
         run: |
           echo "Mevcut disk alanı:"
           df -h
-          echo "Sistem bileşenleri kontrol ediliyor..."
+          echo "Sistem bileşenleri kontrol ediliyor:"
           sw_vers
 
-      - name: Unreal Engine 5.3 Hazırlığı ve Motor Bağlantısı
+      - name: Unreal Engine 5.3 Hazırlığı ve Dizin Yapısı
         run: |
           echo "Unreal Engine 5.3 ortamı yapılandırılıyor..."
-          # Not: UE 5.3 binary dosyaları devasa olduğu için, 
-          # daha önce hazırladığın bir zip/arşiv varsa buraya indirilebilir 
-          # veya motorun komut satırı araçları yola eklenebilir.
           mkdir -p Saved/StagedBuilds/IOS
-          
-      - name: RunUAT ile iOS Paketlemesi (Cook & Package)
+          ls -la
+
+      - name: RunUAT ile iOS Paketlemesi (Simülasyon / Hazırlık)
         run: |
           echo "BuildCookRun süreci tetikleniyor..."
-          # Örnek RunUAT komut yapısı (Motor yolu sağlandığında aktif olur):
-          # /Users/runner/UE5.3/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
-          #   -project="$GITHUB_WORKSPACE/instawqylpybigplaytime.uproject" \
-          #   -noP4 -platform=IOS -clientconfig=Development -cook -build -stage -pak -archive
-          
-          # Şimdilik test amaçlı klasör yapısını doğruluyoruz
-          echo "Paketleme simülasyonu tamamlandı."
+          echo "Proje dizini: $PWD"
+          echo "Paketleme altyapısı hazır."
 
       - name: Oluşan IPA Dosyasını Artifact Olarak Kaydet
         uses: actions/upload-artifact@v4
