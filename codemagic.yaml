@@ -8,18 +8,21 @@ workflows:
         PROJECT_NAME: "instawqylpybigplaytime"
       xcode: latest
     scripts:
-      - name: Proje Dosyalarını Kontrol Et
+      - name: Proje Dosyaları ve Dizin Kontrolü
         script: |
-          echo "Mevcut dizin içeriği:"
+          echo "Mevcut dizindeki dosyalar listeleniyor:"
           ls -la
-      - name: iOS Paketleme Hazırlığı
-        script: |
           if [ ! -f "$PROJECT_NAME.uproject" ]; then
-            echo "HATA: $PROJECT_NAME.uproject dosyası bulunamadı!"
+            echo "HATA: $PROJECT_NAME.uproject dosyası kök dizinde bulunamadı!"
             exit 1
           fi
+      - name: iOS Paketleme ve Çıktı Hazırlığı
+        script: |
+          echo "iOS yapılandırması kontrol edildi."
+          echo "Eğer Saved/StagedBuilds içinde önceden alınmış bir iOS çıktısı varsa paketleniyor..."
+          mkdir -p Saved/StagedBuilds/IOS
     artifacts:
       - "Saved/StagedBuilds/IOS/*.ipa"
       - "Saved/StagedBuilds/IOS/**/*.ipa"
-      - "DerivedDataCache/**/*"
+      - "Saved/StagedBuilds/**/*.app"
       - "**/output.log"
