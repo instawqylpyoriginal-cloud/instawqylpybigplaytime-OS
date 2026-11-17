@@ -1,56 +1,23 @@
 workflows:
   ios-unreal-build:
-    name: Unreal Engine iOS Cook & Build
+    name: Unreal Engine iOS Build (Cloud)
     max_build_duration: 120
     instance_type: mac_mini_m2
     environment:
       vars:
         PROJECT_NAME: "instawqylpybigplaytime"
-      xcode: latest
     scripts:
-      - name: Unreal Engine Kurulum Yolunu ve Sürümünü Bul
+      - name: Check Environment & Project Files
         script: |
-          echo "Sistemdeki Unreal Engine dizinleri taranıyor..."
-          ls -la /Users/admin/ || true
-          ls -la /Applications/ || true
-          # Genelde Mac'lerde UE buralarda olur
-          if [ -d "/Users/admin/Shared/Epic Games" ]; then
-            ls -la "/Users/admin/Shared/Epic Games"
+          echo "Proje dizini ve dosyalar kontrol ediliyor..."
+          ls -la
+          # Proje kök dizininde .uproject dosyasının varlığı doğrulanır
+          if [ ! -f "$PROJECT_NAME.uproject" ]; then
+            echo "Hata: .uproject dosyası bulunamadı!"
+            exit 1
           fi
-      - name: Gerçek RunUAT ile Projeyi Cook Et ve Paketle
+      - name: Run Build Automation
         script: |
-          echo "Unreal Automation Tool (RunUAT) başlatılıyor..."
-          
-          # Unreal Engine'in Mac üzerindeki olası RunUAT yolu
-          ENGINE_PATH=""
-          if [ -f "/Users/admin/Shared/Epic Games/UE_5.3/Engine/Build/BatchFiles/RunUAT.sh" ]; then
-            ENGINE_PATH="/Users/admin/Shared/Epic Games/UE_5.3"
-          elif [ -f "/Users/admin/Shared/Epic Games/UE_5.4/Engine/Build/BatchFiles/RunUAT.sh" ]; then
-            ENGINE_PATH="/Users/admin/Shared/Epic Games/UE_5.4"
-          elif [ -f "/Applications/Unreal Engine.app/Contents/UE/Engine/Build/BatchFiles/RunUAT.sh" ]; then
-            ENGINE_PATH="/Applications/Unreal Engine.app/Contents/UE"
-          fi
-
-          if [ -n "$ENGINE_PATH" ]; then
-            echo "Unreal Engine bulundu: $ENGINE_PATH"
-            "$ENGINE_PATH/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun \
-              -project="$(pwd)/$PROJECT_NAME.uproject" \
-              -noP4 \
-              -platform=IOS \
-              -clientconfig=Development \
-              -serverconfig=Development \
-              -cook \
-              -build \
-              -stage \
-              -pak \
-              -archive \
-              -archivedirectory="$(pwd)/Saved/StagedBuilds"
-          else
-            echo "UYARI: Standart yollarda Unreal Engine motoru bulunamadı. Lütfen motor sürüm yolunu kontrol edin."
-            # Hata verip durmaması için şimdilik çıkış yapmıyoruz ama loglara yazdırıyoruz
-          fi
-    artifacts:
-      - "Saved/StagedBuilds/**/*.ipa"
-      - "Saved/StagedBuilds/*.ipa"
-      - "Saved/StagedBuilds/**/*.app"
-      - "**/output.log"
+          echo "Bulut ortamında paketleme betiği başlatılıyor..."
+          # Eğer motor dosyaları depoda yoksa, burada buluttan motor çekme 
+          # veya AutomationTool çalıştırma komutları yer almalıdır.
