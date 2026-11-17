@@ -1,23 +1,77 @@
 workflows:
-  ios-unreal-build:
-    name: Unreal Engine iOS Build (Cloud)
+  unreal-ios-unsigned-build:
+    name: UE 5.3 iOS Unsigned IPA (Codemagic)
     max_build_duration: 120
     instance_type: mac_mini_m2
     environment:
+      groups:
+        - epic_credentials
       vars:
-        PROJECT_NAME: "instawqylpybigplaytime"
+        UPROJECT_NAME: "İstawqylRealitY.uproject"
     scripts:
-      - name: Check Environment & Project Files
+      - name: Check Disk & Xcode
         script: |
-          echo "Proje dizini ve dosyalar kontrol ediliyor..."
-          ls -la
-          # Proje kök dizininde .uproject dosyasının varlığı doğrulanır
-          if [ ! -f "$PROJECT_NAME.uproject" ]; then
-            echo "Hata: .uproject dosyası bulunamadı!"
+          df -h
+          xcodebuild -version
+
+      - name: Install Epic Games CLI
+        script: |
+          brew install python3
+          pip3 install legendary-gl
+
+      - name: Authenticate & Download UE 5.3 Core
+        script: |
+          echo "Epic Games oturumu aciliyor..."
+          legendary auth --code "$EPIC_SID"
+          legendary install "UE_5.3" --base-path "$HOME/UnrealEngine" --yes
+
+      - name: Fix Project Config for Unsigned iOS
+        script: |
+          CONFIG_FILE=$(find . -maxdepth 3 -name "DefaultEngine.ini" | head -n 1)
+          if [ -n "$CONFIG_FILE" ]; then
+            echo "" >> "$CONFIG_FILE"
+            echo "[/Script/IOSRuntimeSettings.IOSRuntimeSettings]" >> "$CONFIG_FILE"
+            echo "bProjectIsBlueprintOnly=True" >> "$CONFIG_FILE"
+            echo "bBuildForDistribution=False" >> "$CONFIG_FILE"
+          fi
+
+      - name: Cook & Package Unsigned iOS App
+        script: |
+          PROJECT_PATH=$(find . -maxdepth 2 -name "*.uproject" | head -n 1)
+          UE_UAT="$HOME/UnrealEngine/UE_5.3/Engine/Build/BatchFiles/RunUAT.sh"
+
+          "$UE_UAT" BuildCookRun \
+            -project="$CM_BUILD_DIR/$PROJECT_PATH" \
+            -noP4 \
+            -platform=IOS \
+            -clientconfig=Development \
+            -cook \
+            -allmaps \
+            -stage \
+            -pak \
+            -compressed \
+            -skipbuild \
+            -nocompile \
+            -nocompileeditor \
+            -skipbuildeditor \
+            -IgnoreCookErrors \
+            -utf8output \
+            -stagingdirectory="$CM_BUILD_DIR/BuildOutput"
+
+      - name: Create Clean Unsigned IPA
+        script: |
+          mkdir -p FinalIPA/Payload
+          APP_FOLDER=$(find BuildOutput -name "*.app" | head -n 1)
+          
+          if [ -n "$APP_FOLDER" ]; then
+            cp -r "$APP_FOLDER" FinalIPA/Payload/IstawqylReality.app
+            cd FinalIPA
+            zip -r ../IstawqylReality_Unsigned.ipa Payload
+            echo "IPA basariyla olusturuldu!"
+          else
+            echo "Hata: .app klasoru bulunamadi."
             exit 1
           fi
-      - name: Run Build Automation
-        script: |
-          echo "Bulut ortamında paketleme betiği başlatılıyor..."
-          # Eğer motor dosyaları depoda yoksa, burada buluttan motor çekme 
-          # veya AutomationTool çalıştırma komutları yer almalıdır.
+
+    artifacts:
+      - "*.ipa"
