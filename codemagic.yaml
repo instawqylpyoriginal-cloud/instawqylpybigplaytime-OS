@@ -7,7 +7,7 @@ workflows:
       groups:
         - epic_credentials
       vars:
-        UPROJECT_NAME: "İstawqylRealitY.uproject"
+        UPROJECT_NAME: "instawqylpybigplaytime.uproject"
     scripts:
       - name: Check Disk & Xcode
         script: |
@@ -16,13 +16,12 @@ workflows:
 
       - name: Install Epic Games CLI
         script: |
-          brew install python3
-          pip3 install legendary-gl
+          pip3 install --upgrade legendary-gl
 
       - name: Authenticate & Download UE 5.3 Core
         script: |
           echo "Epic Games oturumu aciliyor..."
-          legendary auth --code "$EPIC_SID"
+          echo "$EPIC_SID" | legendary auth
           legendary install "UE_5.3" --base-path "$HOME/UnrealEngine" --yes
 
       - name: Fix Project Config for Unsigned iOS
@@ -37,11 +36,10 @@ workflows:
 
       - name: Cook & Package Unsigned iOS App
         script: |
-          PROJECT_PATH=$(find . -maxdepth 2 -name "*.uproject" | head -n 1)
           UE_UAT="$HOME/UnrealEngine/UE_5.3/Engine/Build/BatchFiles/RunUAT.sh"
 
           "$UE_UAT" BuildCookRun \
-            -project="$CM_BUILD_DIR/$PROJECT_PATH" \
+            -project="$CM_BUILD_DIR/$UPROJECT_NAME" \
             -noP4 \
             -platform=IOS \
             -clientconfig=Development \
@@ -64,9 +62,9 @@ workflows:
           APP_FOLDER=$(find BuildOutput -name "*.app" | head -n 1)
           
           if [ -n "$APP_FOLDER" ]; then
-            cp -r "$APP_FOLDER" FinalIPA/Payload/IstawqylReality.app
+            cp -r "$APP_FOLDER" FinalIPA/Payload/instawqylpybigplaytime.app
             cd FinalIPA
-            zip -r ../IstawqylReality_Unsigned.ipa Payload
+            zip -r ../instawqylpybigplaytime_Unsigned.ipa Payload
             echo "IPA basariyla olusturuldu!"
           else
             echo "Hata: .app klasoru bulunamadi."
