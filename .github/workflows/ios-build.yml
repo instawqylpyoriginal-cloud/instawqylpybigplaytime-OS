@@ -1,43 +1,71 @@
-name: Unreal Engine 5.3 iOS Build
+name: UE 5.3 iOS Unsigned IPA Build
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
+  push:
+    branches: [ main, master ]
 
 jobs:
-  build-ios:
-    runs-on: macos-latest
-    timeout-minutes: 120
+  build-ios-unsigned:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/epicgames/unreal-engine:dev-slim-5.3.2
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.EPIC_TOKEN }}
+      options: --user root
 
     steps:
-      - name: Depoyu Kopyala (Checkout)
+      - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
-      - name: Disk Alanını ve Sistem Bilgisini Kontrol Et
+      - name: Free Up Disk Space
         run: |
-          echo "Mevcut disk alanı:"
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
           df -h
-          echo "Sistem bileşenleri kontrol ediliyor:"
-          sw_vers
 
-      - name: Unreal Engine 5.3 Hazırlığı ve Dizin Yapısı
+      - name: Cook & Stage iOS Project (Unsigned)
         run: |
-          echo "Unreal Engine 5.3 ortamı yapılandırılıyor..."
-          mkdir -p Saved/StagedBuilds/IOS
-          ls -la
+          PROJECT_FILE=$(find . -maxdepth 2 -name "*.uproject" | head -n 1)
+          echo "Bulunan Proje: $PROJECT_FILE"
 
-      - name: RunUAT ile iOS Paketlemesi (Simülasyon / Hazırlık)
+          /home/ue4/UnrealEngine/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
+            -project="$GITHUB_WORKSPACE/$PROJECT_FILE" \
+            -noP4 \
+            -platform=IOS \
+            -clientconfig=Development \
+            -cook \
+            -allmaps \
+            -stage \
+            -pak \
+            -archive \
+            -archivedirectory="$GITHUB_WORKSPACE/BuildOutput" \
+            -nocompileeditor \
+            -skipbuildeditor \
+            -utf8output
+
+      - name: Package Payload into Unsigned IPA
         run: |
-          echo "BuildCookRun süreci tetikleniyor..."
-          echo "Proje dizini: $PWD"
-          echo "Paketleme altyapısı hazır."
+          mkdir -p FinalIPA/Payload
+          APP_FOLDER=$(find BuildOutput -name "*.app" | head -n 1)
+          
+          if [ -n "$APP_FOLDER" ]; then
+            cp -r "$APP_FOLDER" FinalIPA/Payload/
+            cd FinalIPA
+            zip -r ../IstawqylReality_Unsigned.ipa Payload
+            echo "İmzasız IPA başarıyla oluşturuldu!"
+          else
+            echo "Hata: .app klasörü oluşturulamadı."
+            exit 1
+          fi
 
-      - name: Oluşan IPA Dosyasını Artifact Olarak Kaydet
+      - name: Upload Unsigned IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: instawqylpybigplaytime-ios-ipa
-          path: |
-            Saved/StagedBuilds/IOS/**/*.ipa
-            Saved/StagedBuilds/IOS/*.ipa
-            **/output.log
+          name: IstawqylReality-iOS-Unsigned
+          path: IstawqylReality_Unsigned.ipa
+          retention-days: 7
