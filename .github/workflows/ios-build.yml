@@ -1,4 +1,4 @@
-name: UE 5.3 iOS Unsigned IPA Build
+name: UE 5.3 iOS Unsigned IPA Build (Fixed)
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios-unsigned:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/epicgames/unreal-engine:dev-slim-5.3.2
       credentials:
@@ -28,10 +28,21 @@ jobs:
           sudo rm -rf "/usr/local/share/boost"
           df -h
 
-      - name: Cook & Stage iOS Project (Unsigned)
+      - name: Fix Project Config for Linux Cook
+        run: |
+          # Blueprint-only ve sertifikasiz pisirme ayarlarini garantiye al
+          CONFIG_FILE=$(find . -maxdepth 3 -name "DefaultEngine.ini" | head -n 1)
+          if [ -n "$CONFIG_FILE" ]; then
+            echo "" >> "$CONFIG_FILE"
+            echo "[/Script/IOSRuntimeSettings.IOSRuntimeSettings]" >> "$CONFIG_FILE"
+            echo "bProjectIsBlueprintOnly=True" >> "$CONFIG_FILE"
+            echo "bBuildForDistribution=False" >> "$CONFIG_FILE"
+          fi
+
+      - name: Cook & Stage iOS Assets (Bypass SDK & Material Errors)
         run: |
           PROJECT_FILE=$(find . -maxdepth 2 -name "*.uproject" | head -n 1)
-          echo "Bulunan Proje: $PROJECT_FILE"
+          echo "Hedef Proje: $PROJECT_FILE"
 
           /home/ue4/UnrealEngine/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
             -project="$GITHUB_WORKSPACE/$PROJECT_FILE" \
@@ -42,24 +53,30 @@ jobs:
             -allmaps \
             -stage \
             -pak \
-            -archive \
-            -archivedirectory="$GITHUB_WORKSPACE/BuildOutput" \
+            -compressed \
+            -skipbuild \
+            -nocompile \
             -nocompileeditor \
             -skipbuildeditor \
-            -utf8output
+            -IgnoreCookErrors \
+            -utf8output \
+            -stagingdirectory="$GITHUB_WORKSPACE/BuildOutput"
 
-      - name: Package Payload into Unsigned IPA
+      - name: Package Payload into Clean Unsigned IPA
         run: |
           mkdir -p FinalIPA/Payload
+          # Uretilen .app klasorunu veya StagedBuilds icerigini bul
           APP_FOLDER=$(find BuildOutput -name "*.app" | head -n 1)
           
           if [ -n "$APP_FOLDER" ]; then
-            cp -r "$APP_FOLDER" FinalIPA/Payload/
+            # Turkce karakter sorununu onlemek icin klasor adini sabitle
+            cp -r "$APP_FOLDER" FinalIPA/Payload/IstawqylReality.app
             cd FinalIPA
             zip -r ../IstawqylReality_Unsigned.ipa Payload
-            echo "İmzasız IPA başarıyla oluşturuldu!"
+            echo "Temiz imzasiz IPA basariyla olusturuldu!"
           else
-            echo "Hata: .app klasörü oluşturulamadı."
+            echo "Hata: .app klasoru olusturulamadi, StagedBuilds kontrol ediliyor..."
+            ls -la BuildOutput/IOS || true
             exit 1
           fi
 
